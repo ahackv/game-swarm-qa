@@ -91,10 +91,14 @@ try {
   assertNoPrivateKeys(exported);
   const viewports=[];
   const frozenBeforeResize=await page.evaluate(()=>gameAgent.observe());
+  const gameplayState = state => {
+    const {scrollX,scrollY,...layout}=state.layout;
+    return {...state,layout};
+  };
   for(const [name,viewport]of [['desktop',{width:1440,height:1080}],['mobile',{width:390,height:844}]]) {
     await page.setViewportSize(viewport);
     await page.waitForTimeout(150);
-    assert.deepEqual(await page.evaluate(()=>gameAgent.observe()),frozenBeforeResize,'Resizing the frozen game must not change its native simulation state.');
+    assert.deepEqual(gameplayState(await page.evaluate(()=>gameAgent.observe())),gameplayState(frozenBeforeResize),'Resizing may reframe the camera but must not change native gameplay or advance time.');
     const layout=await page.evaluate(()=>({width:innerWidth,documentWidth:document.documentElement.scrollWidth,bodyWidth:document.body.scrollWidth,reportWidth:document.querySelector('#finding-report').getBoundingClientRect().width}));
     assert.ok(layout.documentWidth<=layout.width+1&&layout.bodyWidth<=layout.width+1,name+' must not have horizontal page overflow.');
     await captureGame(page,{path:'evidence/ovo-rehearsal-'+name+'-game.png',label:name+' completed-level capture'});

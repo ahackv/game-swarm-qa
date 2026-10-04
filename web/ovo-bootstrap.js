@@ -24,6 +24,44 @@ cr.layout.prototype.startRunning = function (...args) {
   if (/^Level \d+$/.test(this.name)) this.unbounded_scrolling = false;
   return startLayout.apply(this, args);
 };
+// Level 10 starts beside a thick interior wall and floor. MagiCam centers on
+// the player, putting most of a wide viewport inside those black solids even
+// though it is within the overall level bounds. Frame the playable side of
+// that entrance instead. Read the original solid bounds; keep their geometry,
+// the camera's tracking target, game scale and HUD unchanged.
+const cameraFrames = new WeakMap();
+function frameLevelEntrance(runtime) {
+  const layout = runtime.running_layout;
+  if (layout?.name !== 'Level 10') return;
+  const wall = runtime.getObjectByUID(1067), floor = runtime.getObjectByUID(1069);
+  const player = runtime.types_by_index.find(type => type.sid === 980093774729797)
+    ?.instances.find(instance => instance.behavior_insts.some(behavior => behavior.enabled));
+  if (!wall || !floor || !player) return;
+  wall.update_bbox(); floor.update_bbox();
+  if (player.x < wall.bbox.right || player.y < wall.bbox.top || player.y > floor.bbox.top) return;
+  const scale = player.layer.getScale();
+  if (!(scale > 0)) return;
+  const halfWidth = runtime.draw_width / scale / 2;
+  const halfHeight = runtime.draw_height / scale / 2;
+  const margin = 16; // retain a visible strip of the actual wall/floor
+  const previous = cameraFrames.get(layout);
+  // A resize can redraw without a new MagiCam tick. Reframe from the tracking
+  // position, rather than accumulating the preceding viewport's offset.
+  const nativeX = previous?.x === layout.scrollX ? previous.nativeX : layout.scrollX;
+  const nativeY = previous?.y === layout.scrollY ? previous.nativeY : layout.scrollY;
+  layout.scrollX = Math.max(nativeX, wall.bbox.right - margin + halfWidth);
+  layout.scrollY = Math.min(nativeY, floor.bbox.top + margin - halfHeight);
+  cameraFrames.set(layout, {nativeX,nativeY,x:layout.scrollX,y:layout.scrollY});
+}
+// MagiCam rewrites scroll coordinates on every tick. Apply framing before
+// either renderer, including capture() and redraws following an iframe resize.
+for (const method of ['draw', 'drawGL']) {
+  const draw = cr.runtime.prototype[method];
+  cr.runtime.prototype[method] = function (...args) {
+    frameLevelEntrance(this);
+    return draw.apply(this, args);
+  };
+}
 // Construct normally resizes and recalculates its render scale inside tick().
 // A frozen game must still follow an iframe resize without taking a physics
 // step. Reproduce only that viewport calculation, then redraw the same state.
