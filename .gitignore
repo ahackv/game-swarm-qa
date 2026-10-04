@@ -1,0 +1,9 @@
+private/
+.env
+.env.*
+!.env.example
+node_modules/
+evidence/
+research/
+*.log
+.DS_Store

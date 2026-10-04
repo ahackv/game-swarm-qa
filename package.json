@@ -1,0 +1,29 @@
+{
+  "name": "game-swarm-qa",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "extract": "node scripts/extract.mjs",
+    "extract:ovo": "node scripts/extract-ovo.mjs",
+    "extract:all": "node scripts/extract.mjs && node scripts/extract-ovo.mjs",
+    "start": "node server.mjs",
+    "verify": "node scripts/verify.mjs && node scripts/verify-ovo.mjs && node scripts/verify-credits.mjs && node scripts/verify-rehearsal.mjs",
+    "verify:football": "node scripts/verify.mjs",
+    "verify:ovo": "node scripts/verify-ovo.mjs",
+    "verify:credits": "node scripts/verify-credits.mjs",
+    "agent:football": "node scripts/run-agent.mjs football-legends",
+    "agent:ovo": "node scripts/run-agent.mjs ovo",
+    "verify:rehearsal": "node scripts/verify-rehearsal.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  },
+  "dependencies": {
+    "@ljoukov/llm": "9.0.0",
+    "zod": "4.3.6"
+  }
+}
