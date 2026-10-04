@@ -16,10 +16,11 @@ assert.equal(sameOrigin(request('http://swarm.example'),{hosted:false}),true);
 let calls=0,aborted=false;
 const decisionHandlers=Object.fromEntries(API_PATHS.filter(path=>path.endsWith('/decision')).map(path=>[path,async(input,signal)=>{
   calls++;
+  if(input.delay)await new Promise(resolve=>setTimeout(resolve,input.delay));
   if(input.wait)await new Promise((resolve,reject)=>{
     signal.addEventListener('abort',()=>{aborted=true;reject(signal.reason);},{once:true});
   });
-  return {action:{reason:path},inspection:{request:{ephemeral:true}}};
+  return {action:{reason:path},session:input.session,inspection:{request:{ephemeral:true}}};
 }]));
 const handler=createApiHandler({decisionHandlers,configuration:game=>({game,configured:true}),hosted:true,timeoutMs:150});
 const server=http.createServer((req,res)=>handler(req,res));
@@ -31,6 +32,12 @@ try{
     const response=await fetch(url+path,{method:'POST',headers:{origin:url,'content-type':'application/json'},body:'{"game":"ovo"}'});
     assert.equal(response.status,200);assert.equal((await response.json()).action.reason,path);
   }
+  const concurrent=await Promise.all(['visitor-a','visitor-b'].map(async session=>{
+    const response=await fetch(url+'/api/explore/decision',{method:'POST',body:JSON.stringify({session,delay:50})});
+    assert.equal(response.status,200,'Independent hosted visitors must not reject one another.');
+    return (await response.json()).session;
+  }));
+  assert.deepEqual(concurrent,['visitor-a','visitor-b'],'Each visitor must receive its own decision.');
   const before=calls;
   assert.equal((await fetch(url+'/api/agent/decision',{method:'POST',headers:{origin:'https://evil.example'},body:'{}'})).status,403);
   assert.equal((await fetch(url+'/api/agent/decision')).status,405);
@@ -43,10 +50,25 @@ try{
   aborted=false;
   const controller=new AbortController();
   const pending=fetch(url+'/api/agent/decision',{method:'POST',body:'{"wait":true}',signal:controller.signal}).catch(()=>{});
-  await new Promise(resolve=>setTimeout(resolve,25));controller.abort();await pending;
+  await new Promise(resolve=>setTimeout(resolve,25));
+  const unaffected=fetch(url+'/api/explore/decision',{method:'POST',body:'{"session":"other-visitor","delay":50}'});
+  controller.abort();await pending;
+  const independent=await unaffected;assert.equal(independent.status,200);
+  assert.equal((await independent.json()).session,'other-visitor','Stopping one visitor must not cancel another visitor.');
   await new Promise(resolve=>setTimeout(resolve,25));
   assert.equal(aborted,true,'Closing the browser request must cancel the model request.');
 }finally{server.closeAllConnections();server.close();await once(server,'close');}
+
+const localHandler=createApiHandler({decisionHandlers,hosted:false,archiveDirectory:null});
+const localServer=http.createServer((req,res)=>localHandler(req,res));
+localServer.listen(0,'127.0.0.1');await once(localServer,'listening');
+const localUrl=`http://127.0.0.1:${localServer.address().port}`;
+try{
+  const first=fetch(localUrl+'/api/agent/decision',{method:'POST',body:'{"delay":75}'});
+  await new Promise(resolve=>setTimeout(resolve,20));
+  assert.equal((await fetch(localUrl+'/api/agent/decision',{method:'POST',body:'{}'})).status,409,'Local workstation decisions remain serialized.');
+  assert.equal((await first).status,200);
+}finally{localServer.closeAllConnections();localServer.close();await once(localServer,'close');}
 
 const config=JSON.parse(await readFile(resolve(root,'vercel.json'),'utf8'));
 assert.equal(config.framework,null);assert.equal(config.outputDirectory,'dist');
@@ -63,4 +85,4 @@ async function inspect(directory){
   }
 }
 await inspect(resolve(root,'dist'));
-console.log('Deployment: HTTPS origins, all API routes, method/body limits, model cancellation, static pages/game assets and private-file exclusion verified without model calls.');
+console.log('Deployment: HTTPS origins, all API routes, independent hosted visitors, local serialization, body limits, isolated cancellation, static assets and private-file exclusion verified without model calls.');

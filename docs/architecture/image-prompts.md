@@ -45,4 +45,3 @@ A return arrow along the bottom from VALIDATE + EXECUTE to GAME is labelled "App
 A compact note across the bottom inside a hand-drawn bracket: "Each decision records: source · latency · reason · outcome".
 Constraints: avoid crossing arrows, every arrow clearly directed, all quoted text spelled exactly, large crisp text, no dense paragraphs, no code, no speed claims or numeric performance assertions, no statement that JEV consumes screenshots. All art and text must be generated as one complete image.
 ```
-

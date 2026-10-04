@@ -51,8 +51,18 @@ await Promise.all(Array.from({ length: 5 }, async () => {
   }
 }));
 
-await writeFile(new URL('football_legends.min.js', root), source.replace(marker, 'window.__footballRequire=e,e(e.s=56)'));
+const domainCheck = 't.prototype.checkDomain=function(t){for(var e=0;e<this.brandDomains.length;e++){var i=this.brandDomains[e];if(-1!==t.indexOf(i))return!0}return!1}';
+if (source.split(domainCheck).length !== 2) throw Error('Unexpected domain check; re-inspect before extracting.');
+// Adapt the acquired build for the requested hosted QA demo. Originals remain
+// preserved; only the domain gate changes, not inputs, physics or outcomes.
+await writeFile(new URL('football_legends.min.js', root), source
+  .replace(marker, 'window.__footballRequire=e,e(e.s=56)')
+  .replace(domainCheck, 't.prototype.checkDomain=function(){return!0}'));
 const html = await readFile(new URL('index.html.original', root), 'utf8');
-await writeFile(new URL('index.html', root), html.replace('<script src="//game-cdn.poki.com/scripts/v2/poki-sdk.js"></script>', '<script src="/clock.js"></script>'));
-await writeFile(new URL('../manifest.json', root), JSON.stringify({ retrievedAt: new Date().toISOString(), sourcePage: 'https://poki.com/en/g/football-legends', base, files: manifest.sort((a,b) => a.path.localeCompare(b.path)), modifications: ['Remove external Poki SDK script', 'Install controllable clock before game scripts', 'Expose Webpack require for local state inspection'] }, null, 2));
+const portalRedirect = '<script type="text/javascript" src="assets/lib/pksl.js"></script>';
+if (html.split(portalRedirect).length !== 2) throw Error('Unexpected portal bootstrap; re-inspect before extracting.');
+await writeFile(new URL('index.html', root), html
+  .replace('<script src="//game-cdn.poki.com/scripts/v2/poki-sdk.js"></script>', '<script src="/clock.js"></script>')
+  .replace(portalRedirect, ''));
+await writeFile(new URL('../manifest.json', root), JSON.stringify({ retrievedAt: new Date().toISOString(), sourcePage: 'https://poki.com/en/g/football-legends', base, files: manifest.sort((a,b) => a.path.localeCompare(b.path)), modifications: ['Remove external Poki SDK script', 'Remove portal navigation and domain gate for the hosted QA demo', 'Install controllable clock before game scripts', 'Expose Webpack require for local state inspection'] }, null, 2));
 console.log(`Extracted ${manifest.length} files. Run npm start, then open http://localhost:4173/football-legends.`);

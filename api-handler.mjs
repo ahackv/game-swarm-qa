@@ -65,8 +65,10 @@ export function createApiHandler({decisionHandlers=decisions,configuration=confi
     if(!Object.hasOwn(decisionHandlers,pathname)){json(res,404,{error:'Not found.'});return;}
     if(req.method!=='POST'){json(res,405,{error:'Use POST.'});return;}
     if(!sameOrigin(req,{hosted})){json(res,403,{error:'Origin rejected.'});return;}
-    if(busy){json(res,409,{error:'An agent decision is already running.'});return;}
-    busy=true;
+    // The local workstation keeps one active decision. Hosted requests carry
+    // their own observations and plans, so visitors can play independently.
+    if(!hosted&&busy){json(res,409,{error:'An agent decision is already running.'});return;}
+    if(!hosted)busy=true;
     const controller=new AbortController();
     const cancel=()=>controller.abort();
     const close=()=>{if(!res.writableEnded)cancel();};
@@ -89,7 +91,7 @@ export function createApiHandler({decisionHandlers=decisions,configuration=confi
       if(!controller.signal.aborted)json(res,error.status||502,{error:error.message});
       else if(!res.writableEnded)res.end();
     }finally{
-      busy=false;
+      if(!hosted)busy=false;
       req.off('aborted',cancel);req.off('error',cancel);res.off('close',close);
     }
   };

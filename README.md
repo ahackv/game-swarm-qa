@@ -2,6 +2,8 @@
 
 **Find what’s not fun. Show why.**
 
+[Open Swarm QA](https://game-swarm-qa.vercel.app/)
+
 Swarm QA aims to automate game playtesting with a swarm of AI players. Agents explore a game from different perspectives, find experiences that are frustrating, confusing, repetitive or too easy to exploit, and turn those observations into reproducible evidence for the people making the game.
 
 A beginner getting stuck, an experienced player discovering a dominant strategy, and an explorer bypassing a level reveal different design problems. Swarm QA brings those perspectives together so teams can investigate **what happened, which players it affects, and how to reproduce it**.
@@ -69,6 +71,12 @@ CHATGPT_RESPONSES_WEBSOCKET_MODE=off
 ```
 
 Keep credentials in the ignored `.env` locally or in the hosting provider’s server environment. Model calls run server-side.
+
+### Deployment
+
+The [Vercel project](https://vercel.com/ahackvs-projects/game-swarm-qa) is connected to this GitHub repository. Pushes to `main` deploy to [game-swarm-qa.vercel.app](https://game-swarm-qa.vercel.app/); other branches receive preview deployments.
+
+`npm run build` acquires the game builds and assembles the static site. Vercel serves gameplay assets and runs the model API as a Node.js function. Configure the model and credential variables above in Vercel for Production and Preview. `npm run verify:deployment` checks the deployment routes, API handling and asset packaging locally.
 
 ## Develop and verify
 
