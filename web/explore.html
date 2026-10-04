@@ -1,30 +1,34 @@
 <!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Explore · Swarm QA</title><link rel="stylesheet" href="/workspace.css"></head>
-<body><main>
-  <header class="site-header"><a class="wordmark" href="/">SWARM QA<span class="brand-mark">↗</span></a><span class="eyebrow">THE PLAYTEST WORKSPACE</span></header>
-  <a id="back-game" class="breadcrumb" href="/">← Game overview</a>
+<body class="explore-page"><main>
+  <header class="site-header"><a class="wordmark" href="/">SWARM QA<span class="brand-mark">↗</span></a><a id="back-game" class="breadcrumb" href="/">← Game overview</a></header>
   <div class="explore-header"><div><div class="eyebrow">EXPLORE / LIVE AGENT PLAY</div><h1 id="game-title">Loading game</h1></div><div class="live-badge"><span class="live-dot"></span><span id="session-status">Ready to play</span></div></div>
-  <div class="play-workspace"><section class="play-column" aria-label="Live game">
-    <div class="screen"><iframe id="game" title="Game"></iframe><div id="game-cover" class="game-cover"><img id="cover-image" alt=""><span>READY FOR A FRESH PLAYTEST</span></div></div>
-    <div class="play-toolbar"><div class="native-metrics"><div><span class="metric-label" id="outcome-label">SCORE · AGENT / BOT</span><strong id="live-outcome" class="metric-value">0 – 0</strong></div><div><span class="metric-label">GAME TIME</span><strong class="metric-value" id="play-time">0.0 s</strong></div></div><span class="caption" id="session-setting">Fresh match</span></div>
-    <section class="run-history" aria-labelledby="history-title"><div class="section-heading"><h2 id="history-title">Playtest sessions</h2><span class="caption">THIS BROWSER</span></div><p id="history-empty" class="history-empty">Play with each profile to compare what actually happens.</p><div id="session-history"></div></section>
-  </section><aside class="agent-sidebar" aria-label="Player profile and actions">
-    <div class="eyebrow">THE PLAYTEST AGENT</div><h2>See the game through<br>another player’s eyes.</h2>
+  <section class="play-setup" aria-label="Player profile and controls">
     <fieldset class="profiles"><legend>Choose a level of play</legend>
-      <label class="profile-option"><input type="radio" name="profile" value="beginner" checked><span class="avatar beginner">B</span><span><strong>Beginner</strong><small>Reacts late. Basic controls.<br>Learns by trying.</small></span><span class="check">✓</span></label>
-      <label class="profile-option"><input type="radio" name="profile" value="experienced"><span class="avatar experienced">E</span><span><strong>Experienced</strong><small>Looks ahead. Precise inputs.<br>Times jumps and shots.</small></span><span class="check">✓</span></label>
+      <label class="profile-option"><input type="radio" name="profile" value="beginner" checked><span class="avatar beginner">B</span><span><strong>Beginner</strong><small>Reacts late. Learns by trying.</small></span><span class="check">✓</span></label>
+      <label class="profile-option"><input type="radio" name="profile" value="experienced"><span class="avatar experienced">E</span><span><strong>Experienced</strong><small>Looks ahead. Times each move.</small></span><span class="check">✓</span></label>
     </fieldset>
-    <div class="run-buttons"><button class="primary" id="explore-run" disabled>Watch agent play ↗</button><button id="explore-stop" disabled>Stop</button></div>
-    <p class="caption" id="profile-note">Each run starts fresh. The same game, a different player.</p>
+    <div class="model-selector"><label for="decision-mode">Decision model</label><select id="decision-mode" aria-describedby="decision-mode-note" disabled><option value="hybrid">Jev + Luna</option><option value="luna">Luna only</option></select><p id="decision-mode-note" class="caption">Jev moves. Luna reviews when needed.</p></div>
+    <div class="play-start"><div class="run-buttons"><button class="primary" id="explore-run" disabled>Watch agent play ↗</button><button id="explore-stop" disabled>Stop</button></div><p class="caption" id="profile-note">Each run starts fresh.</p></div>
+  </section>
+  <div class="play-workspace"><aside class="agent-sidebar" aria-label="Live moves">
+    <div class="activity-heading"><h2>Agent activity</h2><span class="activity-mark" aria-hidden="true">↘</span></div>
     <div class="agent-thinking"><span class="eyebrow" id="thinking-label">NEXT MOVE</span><p id="agent-status" role="status">Loading the game and connecting to the agent…</p></div>
-    <div class="session-strip"><div><span class="metric-label">DECISIONS</span><strong class="metric-value" id="decision-count">0</strong></div><div><span class="metric-label">VISUAL REVIEWS</span><strong class="metric-value" id="review-count">0</strong></div></div>
+    <div class="session-strip"><div><span class="metric-label">DECISIONS</span><strong class="metric-value" id="decision-count">0</strong></div><div><span class="metric-label">LUNA CALLS</span><strong class="metric-value" id="review-count">0</strong></div></div>
+    <p class="inspection-hint caption">Click a move to inspect its model calls.</p>
     <ol id="action-feed" class="action-feed" aria-label="Agent decisions"></ol>
     <p id="engine-label" class="caption"></p>
-  </aside></div>
+  </aside><section class="play-column" aria-label="Live game">
+    <div class="screen"><iframe id="game" title="Game"></iframe><div id="game-cover" class="game-cover"><img id="cover-image" alt=""><span>READY FOR A FRESH PLAYTEST</span></div></div>
+    <div class="play-toolbar"><div class="native-metrics"><div><span class="metric-label" id="outcome-label">SCORE · AGENT / BOT</span><strong id="live-outcome" class="metric-value">0 – 0</strong></div><div><span class="metric-label">GAME TIME</span><strong class="metric-value" id="play-time">0.0 s</strong></div></div><span class="caption" id="session-setting">Fresh match</span></div>
+  </section></div>
+  <section class="run-history" aria-labelledby="history-title"><div class="section-heading"><h2 id="history-title">Playtest sessions</h2><span class="caption">THIS BROWSER</span></div><p id="history-empty" class="history-empty">Play with each profile to compare what actually happens.</p><div id="session-history"></div></section>
   <details class="technical"><summary>Game controls &amp; native state</summary><div id="status" class="status"><span id="status-text">Loading</span></div>
     <div class="controls"><button id="quick" disabled>Start quick match</button><button id="credits" hidden disabled>Open credits</button><button id="observe-step" disabled>Step 500 ms</button><button id="step" disabled>Step 1 physics frame</button><button id="batch" disabled>Step 10 frames</button><button id="preview" disabled aria-pressed="false">Preview at 4 fps</button></div>
     <div class="clock"><span>SIMULATION TIME </span><b id="sim">0.000 s</b><span>FRAMES </span><b id="frames">0</b></div><p id="progression" hidden></p><pre id="state"></pre>
   </details>
   <footer><span id="credit"></span><span id="rate"></span></footer>
-</main><script type="module" src="/ui.js"></script><script type="module" src="/explore-ui.js"></script></body></html>
+</main>
+<dialog id="decision-inspector" aria-labelledby="inspection-title"><div class="inspector-header"><div><div class="eyebrow">INSIDE THE DECISION</div><h2 id="inspection-title">Model calls</h2></div><button type="button" id="inspection-close" aria-label="Close decision details">Close ×</button></div><p class="inspector-note">The application prompt and structured response from this move. Kept only for recent moves in this run; cleared when you start again or leave.</p><div id="inspection-content"></div></dialog>
+<script type="module" src="/ui.js"></script><script type="module" src="/explore-ui.js"></script></body></html>

@@ -1,0 +1,20 @@
+.credits-finding .workspace{grid-template-columns:310px minmax(0,1fr)}
+.credits-finding .agent-panel{grid-column:1;grid-row:1}
+.credits-finding .play-column{grid-column:2;grid-row:1}
+.credits-finding .controls button{display:none}
+.credits-finding .controls{padding:12px 0}
+.credits-finding .clock{margin-left:0;width:100%;justify-content:space-between;text-align:left}
+.credits-finding .agent-live #agent-model{font-size:9px;overflow-wrap:anywhere}
+.credits-finding.is-running #game{pointer-events:none}
+.credits-finding .agent-top{flex-direction:column;align-items:stretch}
+.credits-finding .agent-top h2{font-size:23px;letter-spacing:-.045em;line-height:1.15}
+.credits-finding .agent-actions{max-width:none}
+.credits-finding .agent-actions .primary{font-size:12px}
+.credits-finding .credits-progress{font:700 19px/1.5 'Avenir Next',sans-serif;color:var(--ink);padding:12px 0 4px;border-top:1px solid var(--line)}
+.credits-target{position:absolute;transform:translate(-50%,-50%);width:38px;height:38px;border:3px solid #66a800;border-radius:50%;box-shadow:0 0 0 5px #b6ee4b80;pointer-events:none;background:#b6ee4b30}
+.credits-move{font:12px/1.5 'Avenir Next',sans-serif;border:0;padding:5px 0;width:100%;text-align:left;border-radius:0}
+.credits-move-meta{display:block;font:10px/1.7 Menlo,monospace;color:var(--muted);margin:7px 0}
+.credits-move .event{display:block}
+.credits-finding .finding-report[data-outcome="levels-unlocked"]{border-left:6px solid var(--accent)}
+@media(max-width:850px){.credits-finding .workspace{grid-template-columns:1fr}.credits-finding .agent-panel{grid-column:1;grid-row:2}.credits-finding .play-column{grid-column:1;grid-row:1}.credits-finding .agent-live #agent-status{flex-basis:100%}.credits-finding .agent-top{flex-direction:row;align-items:center}.credits-finding .agent-actions{max-width:300px}}
+@media(max-width:520px){.credits-finding .agent-top{flex-direction:column;align-items:stretch}.credits-finding .agent-actions{max-width:none}}

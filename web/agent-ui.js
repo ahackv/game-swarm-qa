@@ -1,6 +1,7 @@
 import {describe as describeState} from './observations.js';
 import {renderReport} from './report.js';
 import {ovoRehearsalAction} from './rehearsal.js';
+import {GOAL_CAMPING_TARGET,GOAL_CAMPING_LEAD,GOAL_CAMPING_DECISION_LIMIT,goalCampingProgress} from './goal-camping.js';
 
 const game=location.pathname.split('/')[1];
 const api=()=>window.gameAgent;
@@ -21,6 +22,17 @@ function syncMode(){
 }
 modeSelect.onchange=syncMode;
 const describe=s=>describeState(game,s);
+const goalProgressLabel=document.querySelector('#agent-goal-progress');
+goalProgressLabel.hidden=game!=='football-legends';
+goalProgressLabel.textContent=`Target: score ${GOAL_CAMPING_TARGET} goals and lead by at least ${GOAL_CAMPING_LEAD}.`;
+function footballOutcome(state){
+ const progress=goalCampingProgress(state,runContext?.baseline?.match?.score1??0);
+ const label=`Goals this run: ${progress.goalsScored??'—'}/${GOAL_CAMPING_TARGET} · Lead: ${progress.lead??'—'} (need ${GOAL_CAMPING_LEAD})`;
+ if(goalProgressLabel.textContent!==label)goalProgressLabel.textContent=label;
+ if(progress.targetReached)return 'Goal target reached · '+state.match.score1+'–'+state.match.score2+' · evidence recorded';
+ if(progress.matchEnded)return 'Match ended · four-goal target not reached';
+ return null;
+}
 document.querySelector('#agent-hypothesis').textContent=game==='football-legends'?'Seed hypothesis: camp inside your own raised goal, charge the fireball naturally, then score across the field.':'Seed hypothesis: lower the left gate, face right at the wall, tap jump with horizontal keys released, then cross left and dive to the exit.';
 rehearse.hidden=game!=='ovo';
 function add(entry){
@@ -43,7 +55,7 @@ function controls(active){
  if(usesJev(modeSelect.value))document.querySelector('#agent-horizon').disabled=true;
 }
 function halt(){generation++;running=false;controller?.abort();api()?.releaseKeys();controls(false);status.textContent='Stopped';report();}
-async function start({limit=120,playbackFps=Number(document.querySelector('#agent-rate').value),minFrames,maxFrames,mode=modeSelect.value}={}){
+async function start({limit=game==='football-legends'?GOAL_CAMPING_DECISION_LIMIT:120,playbackFps=Number(document.querySelector('#agent-rate').value),minFrames,maxFrames,mode=modeSelect.value}={}){
  if(running)return;
  if(mode==='scripted'&&game!=='ovo')throw Error('This rehearsal is for OvO.');
  history.length=0;ledger.replaceChildren();document.querySelector('#agent-count').textContent='0';document.querySelector('#finding-report').hidden=true;
@@ -59,12 +71,19 @@ async function start({limit=120,playbackFps=Number(document.querySelector('#agen
  try{
   api().stop();
   controller=new AbortController();
-  if(game==='football-legends'&&api().observe().state==='menu')await api().startQuickMatch({fireball:true,signal:controller.signal});
+  if(game==='football-legends'){
+   if(api().observe().core?.isEnd)await api().reset({signal:controller.signal});
+   if(api().observe().state==='menu')await api().startQuickMatch({fireball:true,signal:controller.signal});
+  }
   if(game==='ovo')await api().startLevel(9,{signal:controller.signal});
   if(token!==generation)return;
   runContext.baseline=api().observe();let ended=false,plan=null,stepsSinceVisual=0;
   for(let n=0;n<limit&&token===generation;n++){
    const iterationStarted=performance.now(),before=api().observe();let decision;
+   if(game==='football-legends'){
+    const outcome=footballOutcome(before);
+    if(outcome){ended=true;status.textContent=outcome;break;}
+   }
    if(mode==='scripted'){
     decision={action:ovoRehearsalAction(before,history),model:'Scripted rehearsal',transport:'Local script · no model call',latencyMs:0};
    }else if(usesJev(mode)){
@@ -83,12 +102,16 @@ async function start({limit=120,playbackFps=Number(document.querySelector('#agen
      if(escalation.jev)decision.jev=escalation.jev;
      decision.reviewReason=escalation.reason;
     }
-    if(decision.completed){ended=true;status.textContent='Native outcome observed · evidence recorded';report();break;}
+    if(decision.completed||decision.matchEnded){
+     const outcome=game==='football-legends'?footballOutcome(before):'Native outcome observed · evidence recorded';
+     if(!outcome)throw Error('The controller stopped before the native four-goal target was reached.');
+     ended=true;status.textContent=outcome;report();break;
+    }
     if(!decision.action)throw Error('Hybrid controller did not return an action.');
     plan=decision.plan;stepsSinceVisual=decision.stepsSinceVisual;
    }else{
     status.textContent='Agent is inspecting the game';controller=new AbortController();
-    const response=await fetch('/api/agent/decision',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({game,minFrames,maxFrames,state:describe(before),image:api().capture(),history:history.slice(-6).map(h=>({action:h.action,after:h.after}))})});
+    const response=await fetch('/api/agent/decision',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({game,minFrames,maxFrames,initialScore:runContext.baseline.match?.score1??0,state:describe(before),image:api().capture(),history:history.slice(-6).map(h=>({action:h.action,after:h.after}))})});
     decision=await response.json();if(!response.ok)throw Error(decision.error);
    }
    if(token!==generation)break;
@@ -97,13 +120,16 @@ async function start({limit=120,playbackFps=Number(document.querySelector('#agen
    const human=after.players.find(p=>p.human),oldHuman=before.players.find(p=>p.human);
    const event=game==='football-legends'&&after.match.score1>before.match.score1?'Observed: human scored. Native scoreboard '+after.match.score1+'–'+after.match.score2:game==='football-legends'&&oldHuman?.superReady&&human?.superCharge<1?'Observed: charged ability activated. Score remains '+after.match.score1+'–'+after.match.score2:game==='ovo'&&after.completed&&!before.completed?'Observed: native level completion card appeared':game==='ovo'&&after.state!==before.state?'Observed: native layout changed to '+after.state:null;
    const entry={...decision,before:describe(before),after:describe(after),event,guided:true};history.push(entry);add(entry);
-   if(game==='football-legends'&&after.match.score1>runContext.baseline.match.score1){ended=true;status.textContent='Goal observed · evidence recorded';}
+   if(game==='football-legends'){
+    const outcome=footballOutcome(after);
+    if(outcome){ended=true;status.textContent=outcome;}
+   }
    if(game==='ovo'&&(after.completed||Number(/^Level (\d+)$/.exec(after.state)?.[1])>9)){ended=true;status.textContent='Native level completion observed · evidence recorded';}
    if(game==='ovo'&&after.state!=='Level 9'&&!ended){ended=true;status.textContent='Level exited · shortcut remains unconfirmed';}
    report();if(ended)break;
    await sleep(Math.max(0,1000/playbackFps-(performance.now()-iterationStarted)));
   }
-  if(token===generation&&!ended)status.textContent='Run complete · hypothesis unconfirmed';
+  if(token===generation&&!ended)status.textContent=game==='football-legends'?'Decision limit reached · four-goal target not reached':'Run complete · hypothesis unconfirmed';
  }catch(error){if(error.name!=='AbortError')status.textContent=error.message;}
  finally{if(token===generation){running=false;controls(false);api().releaseKeys();report();}}
 }

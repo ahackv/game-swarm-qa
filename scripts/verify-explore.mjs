@@ -12,6 +12,20 @@ const decide=createExploreDecider({hasJev:()=>true,choose:async input=>{routeInp
 const result=await decide({game:'football-legends',state,profile:'beginner'});
 assert.equal(result.guided,false);assert.equal(result.purpose,'explore');assert.equal(result.profile,'beginner');assert.deepEqual(result.action.keys,['KeyX']);
 assert.equal(routeInput.plan.goal,profiles.beginner.prompt);assert.equal('image' in routeInput,false);assert.deepEqual(state,stateCopy);
+assert.equal(result.decisionMode,'hybrid');assert.equal(result.decisionPath,'jev');
+let lunaCalls=0;
+const lunaOnly=createExploreDecider({hasJev:()=>{throw Error('Luna-only must bypass Jev.');},choose:async()=>{throw Error('Luna-only must never call Jev.');},review:async input=>{
+  lunaCalls++;assert.equal(input.image,'luna screenshot');assert.equal(input.profile,'beginner');assert.deepEqual(input.policy,beginner);
+  return {choice:'kick',reason:'Ball in range',model:'luna',latencyMs:1280};
+}});
+const lunaInput={game:'football-legends',state,profile:'beginner',decisionMode:'luna'};
+assert.equal((await lunaOnly(lunaInput)).needsVisual,true);assert.equal(lunaCalls,0);
+const lunaResult=await lunaOnly({...lunaInput,image:'luna screenshot'});
+assert.equal(lunaCalls,1);assert.equal(lunaResult.decisionMode,'luna');assert.equal(lunaResult.decisionPath,'luna');assert.equal(lunaResult.latencyMs,1280);
+assert.deepEqual(lunaResult.action.keys,result.action.keys,'Switching models preserves the available ordinary controls.');
+const lunaWait=await lunaOnly({...lunaInput,state:{...state,core:{isCountDown:true}},image:'luna screenshot'});
+assert.equal(lunaWait.engineWait,true);assert.equal(lunaCalls,1,'Native animation waits do not call either model.');
+await assert.rejects(lunaOnly({...lunaInput,decisionMode:'unknown'}),/Choose Jev \+ Luna or Luna only/);
 let reviewed=false;
 const uncertain=createExploreDecider({hasJev:()=>true,choose:async()=>({choice:'kick',confidence:.4,model:'typesafe/jev-1.13'}),review:async input=>{reviewed=true;assert.equal(input.profile,'experienced');return {choice:'super',reason:'Charged ball in range',model:'visual'};}});
 assert.equal((await uncertain({game:'football-legends',state,profile:'experienced'})).needsVisual,true);assert.equal(reviewed,false);
@@ -20,6 +34,9 @@ const invalid=createExploreDecider({hasJev:()=>true,choose:async()=>({choice:'su
 await assert.rejects(invalid({game:'football-legends',state,profile:'beginner'}),/unavailable action/);
 const cancellation=new AbortController();cancellation.abort();await assert.rejects(decide({game:'football-legends',state,profile:'beginner'},cancellation.signal),{name:'AbortError'});
 const noJev=createExploreDecider({hasJev:()=>false});assert.equal((await noJev({game:'football-legends',state,profile:'beginner'})).needsVisual,true);
+const failedJev=createExploreDecider({hasJev:()=>true,choose:async()=>{throw Error('Jev timed out.');}});
+const fallback=await failedJev({game:'football-legends',state,profile:'beginner'});
+assert.equal(fallback.decisionPath,'jev');assert.ok(Number.isFinite(fallback.latencyMs)&&fallback.latencyMs>=0,'A failed Jev attempt still contributes its elapsed time to the decision.');
 const paused=createExploreDecider({hasJev:()=>{throw Error('Native transitions need no provider.');}});
 const transition=await paused({game:'football-legends',state:{...state,core:{isCountDown:true}},profile:'beginner'});
 assert.equal(transition.engineWait,true);assert.equal(transition.model,'Native transition');assert.deepEqual(transition.action.keys,[]);assert.equal(transition.latencyMs,0);
@@ -33,4 +50,4 @@ const breakable={...platformState,players:[{...platformState.players[0],x:1470,y
 const expertSmash=explorationPolicy({game:'ovo',state:breakable,profile:'experienced'});
 assert.equal(expertSmash.features.terrain,'smashable_platform');assert.deepEqual(expertSmash.candidates.prepare_smash.action.keys,['ArrowUp']);
 assert.deepEqual(expertSmash.candidates.smash.action.keys,['ArrowDown']);assert.equal(explorationPolicy({game:'ovo',state:breakable,profile:'beginner'}).candidates.smash,undefined);
-console.log('Explore: profile boundaries, control precision, routine movement, visual escalation, cancellation and ordinary-play provenance verified.');
+console.log('Explore: model selection, Luna-only bypass, native waits, failure timing, profile boundaries, visual escalation, cancellation and ordinary-play provenance verified.');

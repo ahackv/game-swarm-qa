@@ -4,6 +4,7 @@ import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {generateJson,isChatGptModelId,isOpenAiModelId} from '@ljoukov/llm';
 import {z} from 'zod';
+import {goalCampingInstruction,goalCampingProgress} from './web/goal-camping.js';
 const envPath=new URL('.env',import.meta.url);
 const local=existsSync(envPath)?parseEnv(readFileSync(envPath,'utf8')):{};
 const apiKey=local.OPENAI_API_KEY || process.env.OPENAI_API_KEY;
@@ -27,7 +28,7 @@ const prompts={
 6. Release all keys and let the player fall until native completed:true or state becomes Level 10. Continue DOWN tap if needed while above the platform. Do not move horizontally during the fall.
 Controls: ArrowUp jumps, ArrowDown dives/smashes. Space does not jump. The active player has behaviors[0].enabled=true; facing is the native direction (+1 right, -1 left). ignoreInput may be true during wall jumps; UP pulses still matter. The default observation interval is 30 native frames (500 ms); the cadence instruction below is authoritative. You can tap a key for one frame using holdFrames:1, which releases it for the remaining interval. Read screenshot and native coordinates. Do not invent success: report only native completion or forward level progression. You cannot edit positions, geometry, physics or completion state. Explain the next step in one short sentence.`
 };
-export async function decide({game,state,image,history=[],minFrames=1,maxFrames=120},signal){
+export async function decide({game,state,image,history=[],minFrames=1,maxFrames=120,initialScore=0},signal){
  if(!prompts[game])throw Error('Unsupported game.');
  const {model,configured,transport}=agentConfig(game);
  if(!isChatGptModelId(model)&&!isOpenAiModelId(model))throw Error('Unsupported OpenAI model: '+model);
@@ -38,7 +39,7 @@ export async function decide({game,state,image,history=[],minFrames=1,maxFrames=
  const started=Date.now();
  const schema=z.object({keys:z.array(z.enum(keys)),frames:z.number().int().min(minFrames).max(maxFrames),holdFrames:z.number().int().min(1).max(maxFrames),phase:z.enum(['navigate','defend','charge','shoot','recover','observe']),reason:z.string().max(500),hypothesis:z.string().max(600)}).strict();
  const cadence=minFrames===maxFrames?`Advance exactly ${maxFrames} native frames before your next screenshot. This interval is ${maxFrames*(game==='ovo'?1000/60:25)} milliseconds of game time.`:`Advance ${minFrames}–${maxFrames} native frames before your next screenshot.`;
- const {value:action,result}=await generateJson({model,thinkingLevel:'low',maxAttempts:2,signal:signal||AbortSignal.timeout(60000),instructions:prompts[game]+` Observation cadence overrides the suggested batch lengths above: ${cadence} Set holdFrames to how many initial frames your keys are held, from 1 to frames. Keys are released for the remainder of the interval when holdFrames < frames. This lets you tap or make a short precise move without an extra screenshot. For example, to move left for 3 frames and observe after 10, use keys:[ArrowLeft], frames:10, holdFrames:3. For keys:[] wait the whole interval.`,input:[{role:'user',content:[{type:'text',text:JSON.stringify({state,history:history.slice(-6)})},{type:'input_image',image_url:image,detail:'high'}]}],schema,openAiSchemaName:'game_action'});
+ const {value:action,result}=await generateJson({model,thinkingLevel:'low',maxAttempts:2,signal:signal||AbortSignal.timeout(60000),instructions:prompts[game]+(game==='football-legends'?' '+goalCampingInstruction:'')+` Observation cadence overrides the suggested batch lengths above: ${cadence} Set holdFrames to how many initial frames your keys are held, from 1 to frames. Keys are released for the remainder of the interval when holdFrames < frames. This lets you tap or make a short precise move without an extra screenshot. For example, to move left for 3 frames and observe after 10, use keys:[ArrowLeft], frames:10, holdFrames:3. For keys:[] wait the whole interval.`,input:[{role:'user',content:[{type:'text',text:JSON.stringify({state,history:history.slice(-6),...(game==='football-legends'?{goalProgress:goalCampingProgress(state,initialScore)}:{})})},{type:'input_image',image_url:image,detail:'high'}]}],schema,openAiSchemaName:'game_action'});
  if(!Number.isInteger(action.frames)||action.frames<minFrames||action.frames>maxFrames||!Number.isInteger(action.holdFrames)||action.holdFrames<1||action.holdFrames>action.frames||!Array.isArray(action.keys)||action.keys.some(k=>!keys.includes(k)))throw Error('Invalid model action.');
  return {action,thinkingLevel:'low',model:result.model,modelVersion:result.modelVersion,transport,requestId:result.openAi?.responseId,latencyMs:Date.now()-started,usage:result.usage,apiEquivalentCostUsd:result.costUsd};
 }

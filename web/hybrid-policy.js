@@ -1,5 +1,6 @@
 // Exact geometry and key timing stay local. A text policy may authorize only
 // the current action or this controller's next phase; it never invents keys.
+import {goalCampingProgress} from './goal-camping.js';
 export const POLICY_PHASES=Object.freeze({
  'football-legends':Object.freeze(['Approach net','Adjust camp','Wait for charge','Fire super','Verify goal']),
  ovo:Object.freeze(['Approach wall','Face away','Climb wall','Cross wall','Smash to flag','Observe completion']),
@@ -26,18 +27,19 @@ export function evaluatePolicy({game,state,history=[],plan={}}){
  const action=(keys,holdFrames,phase,reason)=>({keys,frames,holdFrames,phase,reason,hypothesis:hypotheses[game]});
  const wait=(phase,reason)=>action([],frames,phase,reason);
  const player=playerOf(game,state),previous=history.at(-1)?.before;
- let completed=game==='ovo'?Boolean(state?.completed||Number(/^Level (\d+)$/.exec(state?.state)?.[1])>9):Boolean(state?.match?.score1>(plan.initialScore??history[0]?.before?.match?.score1??0));
+ const goalProgress=game==='football-legends'?goalCampingProgress(state,plan.initialScore??history[0]?.before?.match?.score1??0):null;
+ const completed=game==='ovo'?Boolean(state?.completed||Number(/^Level (\d+)$/.exec(state?.state)?.[1])>9):goalProgress.targetReached;
  let reason=null;
  if(!POLICY_PHASES[game].includes(phase))reason='Unrecognized controller phase.';
  else if(!state?.ready&&state?.ready!==undefined)reason='Native game is not ready.';
  else if(!player&&!completed)reason='The active native player is unavailable.';
- const base={currentPhase:phase,completed};
- if(reason||completed){
+ const base={currentPhase:phase,completed,...(goalProgress?{goalProgress,matchEnded:goalProgress.matchEnded}:{})};
+ if(reason||completed||goalProgress?.matchEnded){
   const a=wait(phase,completed?'Native completion observed.':'Wait for visual review.');
   return {...base,features:{game,completed,playerAvailable:Boolean(player),unexpectedState:Boolean(reason),progressStalled:false},suggestedPhase:phase,phaseReady:false,proposedAction:a,continuationAction:a,requiresVisualReason:reason};
  }
  const result=game==='ovo'?ovoPolicy(state,history,phase,player,action,wait):footballPolicy(state,history,phase,player,action,wait);
- const isStalled=stalled(game,history,phase);
+ const isStalled=!(game==='football-legends'&&!result.features.nativeMatchActive)&&stalled(game,history,phase);
  let reset=false;
  if(previous){
   const old=playerOf(game,previous);
@@ -47,7 +49,7 @@ export function evaluatePolicy({game,state,history=[],plan={}}){
  const levelChanged=game==='ovo'&&state.state!==(plan.expectedLevel||'Level 9');
  const unexpected=levelChanged||(game==='football-legends'&&state.state!=='gameplay');
  result.requiresVisualReason=reset?'The native player respawned.':unexpected?'The native game changed to an unexpected level or screen.':result.requiresVisualReason||(isStalled?'Movement has not progressed across six control intervals.':null);
- return {...base,...result,phaseReady:result.suggestedPhase!==phase,features:{game,...result.features,completed,playerAvailable:true,unexpectedState:unexpected,respawned:reset,progressStalled:isStalled}};
+ return {...base,...result,phaseReady:result.suggestedPhase!==phase,features:{game,...result.features,...(goalProgress?{goalProgress}:{}),completed,playerAvailable:true,unexpectedState:unexpected,respawned:reset,progressStalled:isStalled}};
 }
 function ovoPolicy(state,history,phase,p,action,wait){
  const wallReached=p.x<=177,aboveWall=p.y<=535,crossedWall=p.x<=145;
@@ -106,7 +108,8 @@ function footballPolicy(state,history,phase,p,action,wait){
   return action(keys,m.hold,'Adjust camp','Use a short directional hold to place the player inside the raised net.');
  };
  let next=phase,continuation=wait(phase,'Wait for the native match state.'),proposed=continuation,reason=null;
- if(!playing)return {features,suggestedPhase:phase,proposedAction:continuation,continuationAction:continuation,requiresVisualReason:core.isEnd?'The native match ended before this hypothesis produced a recorded goal.':null};
+ if(!playing)return {features,suggestedPhase:phase,proposedAction:continuation,continuationAction:continuation,requiresVisualReason:null};
+ if(!inNet&&!['Approach net','Adjust camp'].includes(phase))return {features,suggestedPhase:'Approach net',proposedAction:approach(),continuationAction:wait(phase,'The player is outside the camp; return to the raised goal before the next shot.'),requiresVisualReason:null};
  if(p.superPower!==0)reason='The active character does not have the fireball ability required by this guided strategy.';
  if(phase==='Approach net'){
   continuation=approach();if(p.x<125&&p.y<280){next='Adjust camp';proposed=adjust();}

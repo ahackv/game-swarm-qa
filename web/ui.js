@@ -1,5 +1,6 @@
 const iframe = document.querySelector('#game');
 const isOvo = location.pathname.split('/')[1] === 'ovo';
+const temporarySave=isOvo&&location.pathname.endsWith('/findings/credits-unlock');
 const config = isOvo ? {slug:'ovo',title:'OvO',fps:60,author:'DEDRA GAMES'} : {slug:'football-legends',title:'Football Legends',fps:40,author:'MADPUFFERS'};
 const frameMs = 1000 / config.fps;
 document.title = config.title + ' · Swarm QA';
@@ -10,7 +11,8 @@ document.querySelector('#quick').textContent = isOvo ? 'Start level 1' : 'Start 
 document.querySelector('#credits').hidden = !isOvo;
 document.querySelector('#progression').hidden = !isOvo;
 iframe.title = 'Extracted ' + config.title;
-iframe.src = '/game/' + config.slug + '/index.html';
+const gameUrl='/game/'+config.slug+'/index.html'+(temporarySave?'?save=temporary':'');
+iframe.src = gameUrl;
 const buttons = [...document.querySelectorAll('.controls button')];
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 let preview = null, ready = false, stepping = false;
@@ -52,7 +54,7 @@ function refresh() {
   if (!state.ready) return;
   document.querySelector('#sim').textContent=state.clock.simulationSeconds.toFixed(3)+' s';
   document.querySelector('#frames').textContent=String(state.clock.frames);
-  if(isOvo)document.querySelector('#progression').textContent='Native progression: '+state.unlockedLevels+' / 52 levels unlocked.'+(state.state==='Credits'?' Double-click the central DEDRA logo, then step one frame to inspect the result.':'');
+  if(isOvo)document.querySelector('#progression').textContent='Native progression: '+state.unlockedLevels+' / 52 levels unlocked.'+(temporarySave?' Temporary save for this demonstration.':state.state==='Credits'?' Double-click the central DEDRA logo, then step one frame to inspect the result.':'');
   document.querySelector('#state').textContent=JSON.stringify(state,null,2);
   document.querySelector('#status-text').textContent=preview?'Preview · 4 fps':'Ready';
   document.querySelector('#status').classList.add('ready');
@@ -140,9 +142,29 @@ function capture() {
   else game.renderer.render(game.stage);
   return win.document.querySelector('canvas').toDataURL('image/png');
 }
-async function openCredits() {
+async function openCredits({signal}={}) {
+  signal?.throwIfAborted();
   stopPreview();runtime().win.c2_callFunction('Menu > Credits',[]);
   return step({frames:120,keys:[]});
+}
+// Normalized coordinates refer to the captured canvas. Only ordinary mouse
+// events are dispatched; the original game owns every hit test and outcome.
+async function pointer({type='click',x,y,viewport}, {signal}={}) {
+  signal?.throwIfAborted();
+  if(!ready)throw Error('Game is still loading.');
+  if(!['click','double_click'].includes(type)||![x,y].every(n=>Number.isFinite(n)&&n>=0&&n<=1))throw Error('Invalid canvas click.');
+  const {win}=runtime(),canvas=win.document.querySelector('canvas'),rect=canvas.getBoundingClientRect();
+  if(viewport&&(canvas.width!==viewport.width||canvas.height!==viewport.height))throw Error('The game was resized during the decision. Run the test again.');
+  stopPreview();applyKeys([]);
+  const fire=(name,detail,buttons=0)=>{
+    const event=new win.MouseEvent(name,{bubbles:true,cancelable:true,view:win,clientX:rect.left+x*rect.width,clientY:rect.top+y*rect.height,button:0,buttons,detail});
+    // Construct's original jQuery mouse plugin reads the legacy button field.
+    Object.defineProperty(event,'which',{value:1});canvas.dispatchEvent(event);
+  };
+  fire('mousemove',0);
+  for(let click=1;click<=(type==='double_click'?2:1);click++){fire('mousedown',click,1);fire('mouseup',click);fire('click',click);}
+  if(type==='double_click')fire('dblclick',2);
+  return agentStep({frames:1,keys:[]});
 }
 async function reset({signal}={}) {
   signal?.throwIfAborted();stopPreview();applyKeys([]);ready=false;buttons.forEach(button=>button.disabled=true);
@@ -150,12 +172,12 @@ async function reset({signal}={}) {
     const cleanup=()=>{iframe.removeEventListener('load',loaded);signal?.removeEventListener('abort',aborted);};
     const loaded=()=>{cleanup();resolve();},aborted=()=>{cleanup();reject(signal.reason);};
     iframe.addEventListener('load',loaded,{once:true});signal?.addEventListener('abort',aborted,{once:true});
-    iframe.src='/game/'+config.slug+'/index.html?run='+Date.now();
+    iframe.src=gameUrl+(temporarySave?'&':'?')+'run='+Date.now();
   });
   await initialize(signal);
   return observe();
 }
-const api = {observe,capture,act,reset,step:agentStep,stop:stopPreview,releaseKeys:()=>applyKeys([]),...(isOvo ? {startLevel,openCredits} : {startQuickMatch:quickMatch})};
+const api = {observe,capture,act,pointer,reset,step:agentStep,stop:stopPreview,releaseKeys:()=>applyKeys([]),...(isOvo ? {startLevel,openCredits} : {startQuickMatch:quickMatch})};
 window.gameAgent = api;
 window[isOvo ? 'ovo' : 'football'] = api;
 document.querySelector('#observe-step').onclick=()=>agentStep({frames:config.fps/2}).catch(showError);
@@ -186,6 +208,11 @@ while(!ready) {
       if(isOvo) {game.isSuspended=false;win.Howler?.mute(true);}
       ready=true;buttons.forEach(b=>b.disabled=false);refresh();
       win.addEventListener('blur',()=>applyKeys([]));
+      // Phaser clears its canvas when the iframe changes size. Redraw the
+      // existing scene after that resize without advancing the game clock.
+      if(!isOvo)win.addEventListener('resize',()=>requestAnimationFrame(()=>{
+        if(ready&&runtime().win===win){game.scale.updateLayout();game.renderer.render(game.stage);}
+      }));
       break;
     }
   } catch(error) {if(signal?.aborted)throw signal.reason;console.debug(error.message);}

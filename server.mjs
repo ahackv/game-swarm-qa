@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import {decide,agentConfig} from './agent.mjs';
 import {hybridDecide,hybridConfig} from './hybrid.mjs';
 import {exploreDecide,exploreConfig} from './explore.mjs';
+import {creditsDecide} from './credits.mjs';
 
 const root = resolve(import.meta.dirname);
 const port = Number(process.env.PORT || 4173);
@@ -15,7 +16,7 @@ const server = http.createServer(async (req, res) => {
   try {
     const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
     if(pathname==='/api/agent/config') {const game=new URL(req.url,'http://localhost').searchParams.get('game');json(res,200,{...agentConfig(game),hybrid:hybridConfig(game),explore:exploreConfig(game)});return;}
-    if(['/api/agent/decision','/api/hybrid/decision','/api/explore/decision'].includes(pathname)) {
+    if(['/api/agent/decision','/api/hybrid/decision','/api/explore/decision','/api/credits/decision'].includes(pathname)) {
       if(req.method!=='POST'){json(res,405,{error:'Use POST.'});return;}
       if(req.headers.origin && req.headers.origin!=='http://'+req.headers.host){json(res,403,{error:'Origin rejected.'});return;}
       if(busy){json(res,409,{error:'An agent decision is already running.'});return;}
@@ -26,9 +27,11 @@ const server = http.createServer(async (req, res) => {
         const chunks=[];let size=0;for await(const chunk of req){size+=chunk.length;if(size>3_500_000)throw Error('Request too large.');chunks.push(chunk);}
         const input=JSON.parse(Buffer.concat(chunks).toString('utf8'));
         const exploring=pathname==='/api/explore/decision';
-        const result=await (exploring?exploreDecide:pathname==='/api/hybrid/decision'?hybridDecide:decide)(input,AbortSignal.any([controller.signal,AbortSignal.timeout(60000)]));
+        const result=await (exploring?exploreDecide:pathname==='/api/credits/decision'?creditsDecide:pathname==='/api/hybrid/decision'?hybridDecide:decide)(input,AbortSignal.any([controller.signal,AbortSignal.timeout(60000)]));
+        // Full model calls are returned for this screen only, never archived.
+        const {inspection,...savedResult}=result;
         const directory=resolve(root,'private/runs');await mkdir(directory,{recursive:true});
-        await writeFile(resolve(directory,randomUUID()+'.json'),JSON.stringify({engine:exploring?'explore':pathname.includes('/hybrid/')?'hybrid':'visual',game:input.game,state:input.state,...result,guided:!exploring,createdAt:new Date().toISOString()},null,2));
+        await writeFile(resolve(directory,randomUUID()+'.json'),JSON.stringify({engine:exploring?'explore':pathname.includes('/hybrid/')?'hybrid':'visual',game:input.game,state:input.state,...savedResult,guided:!exploring,createdAt:new Date().toISOString()},null,2));
         json(res,200,result);
       } catch(error) {json(res,502,{error:error.message});}
       finally {busy=false;}
@@ -46,7 +49,7 @@ const server = http.createServer(async (req, res) => {
     else if(/^\/(football-legends|ovo)\/explore$/.test(pathname))filename=resolve(root,'web/explore.html');
     else if(['/football-legends/findings/goal-camping','/ovo/findings/left-wall-shortcut','/ovo/findings/credits-unlock'].includes(pathname))filename=resolve(root,'web/player.html');
     else if(/^\/previews\/(football-legends|ovo)\.png$/.test(pathname))filename=resolve(root,'private',pathname.slice(1));
-    else if (['/', '/index.html', '/ui.js', '/agent-ui.js', '/observations.js', '/report.js', '/rehearsal.js', '/clock.js','/ovo-bootstrap.js','/games.js','/game-home.js','/workspace.css','/explore-ui.js','/explore-policy.js','/finding.js'].includes(pathname)) filename = resolve(root, 'web', pathname === '/' ? 'index.html' : pathname.slice(1));
+    else if (['/', '/index.html', '/ui.js', '/agent-ui.js', '/observations.js', '/report.js', '/rehearsal.js', '/clock.js','/ovo-bootstrap.js','/games.js','/game-home.js','/workspace.css','/explore-ui.js','/explore-policy.js','/decision-modes.js','/decision-inspector.js','/decision-inspector.css','/finding.js','/finding-agent.js','/goal-camping.js','/credits-ui.js','/credits-policy.js','/credits.css'].includes(pathname)) filename = resolve(root, 'web', pathname === '/' ? 'index.html' : pathname.slice(1));
     else if(pathname==='/favicon.ico'){res.writeHead(204);res.end();return;}
     else { res.writeHead(404); res.end('Not found'); return; }
     if (!filename.startsWith(root + sep)) { res.writeHead(403); res.end('Forbidden'); return; }

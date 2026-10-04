@@ -1,0 +1,46 @@
+import assert from 'node:assert/strict';
+import {createCreditsDecider} from '../credits.mjs';
+import {buildReport} from '../web/report.js';
+import {creditsUnlocked,validateCreditsAction} from '../web/credits-policy.js';
+
+const state={state:'Credits',unlockedLevels:1,clock:{frames:120,simulationSeconds:2}},image='data:image/png;base64,aW1hZ2U=';
+const action={type:'double_click',x:.5,y:.31,reason:'Double-click the logo in the screenshot.'};
+let submitted,calls=0;
+const decide=createCreditsDecider({configure:()=>({configured:true,model:'visual-fixture',transport:'test'}),generate:async options=>{
+  submitted=options;calls++;return {value:action,result:{model:'visual-fixture',usage:{inputTokens:3},costUsd:0}};
+}});
+const result=await decide({game:'ovo',state:{...state,objects:[{type:'logo',x:123,y:456}],secret:'never forwarded'},image,inspect:true});
+assert.equal(submitted.input[0].content[1].image_url,image);
+assert.deepEqual(JSON.parse(submitted.input[0].content[0].text).state,state,'No native logo coordinates or arbitrary state are sent to the visual agent.');
+assert.equal(result.action.type,'double_click');assert.equal(result.action.frames,1);assert.equal(result.guided,true);
+assert.equal(result.inspection.request.instructions,submitted.instructions);assert.deepEqual(result.inspection.response,action);
+assert.equal(result.inspection.request.input[0].content[0].text,submitted.input[0].content[0].text);
+assert.ok(!JSON.stringify(result.inspection).includes('data:image/'));
+assert.ok(result.latencyMs>=0);assert.equal(result.inspection.latencyMs,result.latencyMs);
+assert.equal((await decide({game:'ovo',state,image})).inspection,undefined);
+await assert.rejects(decide({game:'ovo',state,image:'invalid'}),/screenshot/);
+await assert.rejects(decide({game:'football-legends',state,image}),/OvO credits/);
+await assert.rejects(decide({game:'ovo',state:{...state,state:'Level 9'},image}),/OvO credits/);
+await assert.rejects(decide({game:'ovo',state:{...state,unlockedLevels:52},image}),/fresh save/);
+assert.equal(calls,2,'Invalid inputs must not reach the provider.');
+assert.throws(()=>validateCreditsAction({...action,x:1.1}),/coordinates/);
+assert.throws(()=>validateCreditsAction({...action,y:NaN}),/coordinates/);
+const controller=new AbortController();controller.abort();
+await assert.rejects(decide({game:'ovo',state,image},controller.signal),{name:'AbortError'});
+const late=new AbortController();
+const aborting=createCreditsDecider({configure:()=>({configured:true,model:'test'}),generate:async()=>{late.abort();return {value:action,result:{model:'test'}};}});
+await assert.rejects(aborting({game:'ovo',state,image},late.signal),{name:'AbortError'});
+const invalid=createCreditsDecider({configure:()=>({configured:true,model:'test'}),generate:async()=>({value:{...action,type:'edit_levels'},result:{model:'test'}})});
+await assert.rejects(invalid({game:'ovo',state,image}));
+
+const after={...state,unlockedLevels:52,clock:{frames:121,simulationSeconds:121/60}};
+const history=[{...result,before:state,after,image,inspection:result.inspection}];
+const report=buildReport({game:'ovo',finding:'credits-unlock',history,baseline:state,final:after});
+assert.equal(report.outcome,'levels-unlocked');assert.equal(report.metrics.visualReviews,1);assert.equal(report.metrics.jevCalls,0);
+assert.equal(report.decisions[0].action.x,action.x);assert.equal(report.decisions[0].action.type,'double_click');
+assert.ok(!JSON.stringify(report).includes('data:image/')&&!JSON.stringify(report).includes('outputSchema'),'Export contains evidence, not screenshot/prompt payloads.');
+assert.ok(!report.interpretation.includes('level-9'));assert.equal(creditsUnlocked(after,after),false);
+assert.equal(buildReport({game:'ovo',finding:'credits-unlock',baseline:after,final:after,history:[]}).outcome,'already-unlocked');
+assert.equal(buildReport({game:'ovo',finding:'credits-unlock',baseline:state,final:after,history:[]}).outcome,'unconfirmed','An unexplained external unlock is not attributed to the model.');
+assert.equal(buildReport({game:'ovo',finding:'credits-unlock',baseline:state,final:state,history:[{...history[0],after:state}]}).outcome,'unconfirmed');
+console.log('Credits agent: screenshot-only targeting, bounded input, cancellation, transient inspection and native-evidence reports verified without model calls.');

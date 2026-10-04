@@ -1,5 +1,20 @@
 // Loading runs in real time until the parent arms the synthetic game clock.
 window.C2_RegisterSW = () => {};
+// The credits reproduction uses a new, temporary save on each iframe load.
+// Let the native startup create its normal default save, and let native events
+// update it. Never clear or overwrite the browser's persistent game progress.
+if(new URLSearchParams(location.search).get('save')==='temporary'){
+  const save=new Map();
+  const reply=(value,callback)=>{const result=Promise.resolve(value);if(callback)result.then(value=>callback(null,value));return result;};
+  window.localforage={
+    getItem:(key,callback)=>reply(structuredClone(save.get(String(key))??null),callback),
+    setItem:(key,value,callback)=>{save.set(String(key),structuredClone(value));return reply(value,callback);},
+    removeItem:(key,callback)=>{save.delete(String(key));return reply(undefined,callback);},
+    clear:callback=>{save.clear();return reply(undefined,callback);},
+    keys:callback=>reply([...save.keys()],callback),
+  };
+  addEventListener('pagehide',()=>save.clear());
+}
 // Audio is disabled for a visual QA demo; no audio fetches or audio clock run.
 if (window.Howler) {
   Howler.mute(true);

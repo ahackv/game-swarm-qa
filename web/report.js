@@ -1,5 +1,7 @@
 // Reports describe this run's native observations, not an independently
 // discovered exploit or a measurement of player enjoyment.
+import {GOAL_CAMPING_TARGET,GOAL_CAMPING_LEAD,goalCampingProgress} from './goal-camping.js';
+import {creditsUnlocked,CREDITS_LEVELS} from './credits-policy.js';
 const finite = value => typeof value === 'number' && Number.isFinite(value);
 const text = value => typeof value === 'string' ? value : '';
 const unique = values => [...new Set(values.filter(Boolean))];
@@ -52,6 +54,7 @@ function decisionRecord(game, entry, index) {
       frames: finite(a.frames) ? a.frames : null,
       holdFrames: finite(a.holdFrames) ? a.holdFrames : finite(a.frames) ? a.frames : null,
       phase: text(a.phase), reason: text(a.reason), hypothesis: text(a.hypothesis),
+      ...(['double_click','stop'].includes(a.type)?{type:a.type,...(finite(a.x)&&finite(a.y)?{x:a.x,y:a.y}:{})}:{}),
     },
     before: snapshot(game, entry.before), after: snapshot(game, entry.after),
     event: text(entry.event) || null,
@@ -68,7 +71,7 @@ function decisionRecord(game, entry, index) {
 }
 
 /** Build a portable, image-free record. This is also usable without a DOM. */
-export function buildReport({game, history = [], baseline, final, status = '', startedAt, finishedAt, mode = 'live', strategy = 'routed'} = {}) {
+export function buildReport({game, finding, history = [], baseline, final, status = '', startedAt, finishedAt, mode = 'live', strategy = 'routed'} = {}) {
   if (!['football-legends', 'ovo'].includes(game)) throw Error('Unknown report game.');
   if (!['live', 'scripted', 'hybrid'].includes(mode)) throw Error('Unknown report mode.');
   const decisions = history.map((entry, index) => decisionRecord(game, entry, index));
@@ -91,22 +94,35 @@ export function buildReport({game, history = [], baseline, final, status = '', s
   const wallSeconds = finite(elapsedMs) && elapsedMs >= 0 ? elapsedMs / 1000 : null;
   const facts = [];
   let outcome = 'unconfirmed', title = 'Hypothesis unconfirmed';
-  let hypothesis, interpretation, nextStep;
+  let hypothesis, interpretation, nextStep,goalProgress;
 
   if (game === 'football-legends') {
     const goal = pairs.some(([before, after]) => finite(before?.match?.score1) && after?.match?.score1 > before.match.score1);
-    if (goal) { outcome = 'goal-observed'; title = 'Goal observed'; }
+    goalProgress=goalCampingProgress(last,initial?.match?.score1??NaN);
+    if(goalProgress.targetReached){outcome='goal-target-reached';title='Goal-camping target reached';}
+    else if(goalProgress.matchEnded){outcome='goal-target-unmet';title='Match ended before the goal target';}
+    else if(goal){outcome='goals-in-progress';title=goalProgress.goalsScored===null?'Goals observed · target unconfirmed':goalProgress.goalsScored+(goalProgress.goalsScored===1?' goal observed':' goals observed')+' · target in progress';}
     const score = state => finite(state?.match?.score1) && finite(state?.match?.score2) ? state.match.score1 + '–' + state.match.score2 : null;
     if (score(initial) && score(last)) facts.push('Native scoreboard: ' + score(initial) + ' → ' + score(last) + '.');
     if (goal) facts.push('The native human score increased during the recorded run.');
+    if(goalProgress.goalsScored!==null)facts.push('Goals scored this run: '+goalProgress.goalsScored+' / '+GOAL_CAMPING_TARGET+'. Current lead: '+goalProgress.lead+'; target lead: at least '+GOAL_CAMPING_LEAD+'.');
     if (sampledPlayers.some(p => finite(p.x) && p.x <= 105)) facts.push('A recorded observation placed the human player beside or inside its left goal (x ≤ 105).');
     if (decisions.some(entry => {
       const before = player(game, entry.before), after = player(game, entry.after);
       return entry.action.keys.includes('KeyZ') && before?.superReady && finite(after?.superCharge) && after.superCharge < before.superCharge;
     })) facts.push('Super charge decreased after a Z input while the ability had been ready.');
     hypothesis = 'Camp inside the raised goal, let the fireball charge naturally, then shoot across the pitch.';
-    interpretation = goal ? 'The run produced a goal. Repeated comparisons are needed to assess the seeded strategy’s advantage and its effect on play.' : 'This run has not established the proposed advantage from goal camping and the charged shot.';
-    nextStep = goal ? 'Repeat from fresh matches and compare goals, concessions, and time spent waiting against an active-play baseline.' : 'Repeat the guided route, inspect the charge and ball timing, and record a native score increase before treating the hypothesis as supported.';
+    interpretation = goalProgress.targetReached?'The agent scored at least four goals during this run and established a lead of at least two. This demonstrates repeated scoring with the supplied strategy; it is not a claim that the match was won or that the strategy beats every opponent.':goal?'Scoring is recorded, but the four-goal demonstration with a two-goal lead is not complete.':'This run has not established the proposed advantage from goal camping and the charged shot.';
+    nextStep = goalProgress.targetReached?'Repeat from fresh matches and compare goals, concessions, and time spent waiting against an active-play baseline.':goalProgress.matchEnded?'Start a fresh match and repeat the strategy to test whether it reaches the four-goal target with a two-goal lead.':'Continue through celebrations and kickoffs, return to the raised goal, and repeat until four goals are recorded with a lead of at least two.';
+  } else if(finding==='credits-unlock'){
+    const reproduced=decisions.some(entry=>entry.action.type==='double_click'&&creditsUnlocked(entry.before,entry.after));
+    if(reproduced){outcome='levels-unlocked';title='Credits logo unlock reproduced';}
+    else if(initial?.unlockedLevels===CREDITS_LEVELS){outcome='already-unlocked';title='Levels were already unlocked';}
+    if(finite(initial?.unlockedLevels)&&finite(last?.unlockedLevels))facts.push('Native unlocked-level count: '+initial.unlockedLevels+' → '+last.unlockedLevels+' / '+CREDITS_LEVELS+'.');
+    for(const entry of decisions.filter(entry=>entry.action.type==='double_click'))facts.push('Decision '+entry.decision+': double-click at '+Math.round(entry.action.x*100)+'% across, '+Math.round(entry.action.y*100)+'% down the screenshot, followed by one native frame.');
+    hypothesis='Double-clicking the DEDRA logo in the credits unlocks all 52 levels.';
+    interpretation=reproduced?'The native count increased to 52 after the model-selected double-click. This reproduces the supplied hidden-unlock hypothesis in a temporary save. The game itself changed progression.':'The recorded inputs do not establish a new unlock. A successful demonstration requires locked levels before the click and a native count of 52 afterwards.';
+    nextStep=reproduced?'Repeat from a fresh save and compare with a single-click control. Decide whether this built-in hidden unlock should be accessible in the shipped game.':'Inspect the submitted screenshot and chosen coordinates, then repeat from a fresh save.';
   } else {
     const completionCard = states.some(state => state.completed === true);
     const advanced = initial?.state === 'Level 9' && states.some(state => Number(/^Level (\d+)$/.exec(state.state)?.[1]) > 9);
@@ -136,9 +152,9 @@ export function buildReport({game, history = [], baseline, final, status = '', s
     facts.push('Run the agent to collect native game observations and an action record.');
   }
   return {
-    schemaVersion: 1, createdAt: new Date().toISOString(), game, mode, ...(mode==='hybrid'?{strategy}:{}), guided: true,
+    schemaVersion: 1, createdAt: new Date().toISOString(), game, ...(finding?{finding}:{}), mode, ...(mode==='hybrid'?{strategy}:{}), guided: true,
     provenance: mode === 'scripted' ? 'This run replayed a scripted input sequence for the displayed seed hypothesis. No model inference or independent discovery is claimed.' : mode === 'hybrid' ? strategy==='tactical' ? 'Jev chose movement actions from the supplied strategy and current telemetry; local code calculated exact key timing. '+(visualReviews?'A visual LLM reviewed uncertain situations.':'No visual LLM calls were needed in this run.')+' This is a guided hybrid run.' : 'A visual LLM established and reviewed the supplied plan. Jev routed routine decisions from telemetry; local code calculated exact key timing. This is a guided hybrid run.' : 'The agent received the displayed seed hypothesis. This is guided exploration, not a claim of independent discovery.',
-    status: text(status), outcome, title, hypothesis, facts, interpretation, nextStep,
+    status: text(status), outcome, title, hypothesis, facts, interpretation, nextStep,...(goalProgress?{goalProgress}:{}),
     metrics: {decisions: decisions.length, simulationSeconds, wallSeconds, totalInferenceMs, averageInferenceMs: decisions.length ? totalInferenceMs / decisions.length : null, models, transports,visualReviews,jevCalls},
     baseline: initial, final: last, decisions,
   };

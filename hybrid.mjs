@@ -5,12 +5,13 @@ import {agentConfig} from './agent.mjs';
 import {jevConfig,jevRoute,jevChooseAction} from './jev.mjs';
 import {evaluatePolicy,POLICY_PHASES,POLICY_INITIAL_PHASE} from './web/hybrid-policy.js';
 import {evaluateTactics} from './web/jev-actions.js';
+import {goalCampingInstruction} from './web/goal-camping.js';
 
 export const VISUAL_CHECKPOINT_EVERY=10;
 export const MIN_ROUTING_CONFIDENCE=0.8;
 const screenshot=/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/;
 const visualGoals={
- 'football-legends':'Test the supplied strategy: jump into the left goal, stay near x65–90, let the fireball charge naturally, then use it against the built-in bot. Verify a goal using the native scoreboard. This is a guided reproduction, not an independently discovered exploit.',
+ 'football-legends':'Test the supplied strategy: jump into the left goal, stay near x65–90, let the fireball charge naturally, then use it against the built-in bot. '+goalCampingInstruction+' This is a guided reproduction, not an independently discovered exploit.',
  ovo:'Reproduce the supplied Level 9 shortcut: move left to the wall, tap right to face away, repeatedly tap up with horizontal keys released to climb, cross left above the wall, and smash down to the flag. Verify the native level completion. This is a guided reproduction, not an independently discovered exploit.'
 };
 function visualConfig(game){
@@ -108,7 +109,7 @@ export function createHybridDecider({route=jevRoute,chooseAction=jevChooseAction
   const tactical=strategy==='tactical',evaluateCurrent=tactical?evaluateTactical:evaluate;
   if(tactical&&!plan)plan=normalizePlan(game,state,{goal:visualGoals[game],phase:POLICY_INITIAL_PHASE[game],notes:'Tester-supplied guided strategy.',source:'seed'});
   let policy=evaluateCurrent({game,state,history:recent,plan:plan||{initialScore:Number(state.match?.score1)||0,expectedLevel:'Level 9'}});
-  if(policy.completed)return {strategy,completed:true,needsVisual:false,action:null,plan,stepsSinceVisual,visualReview:false,latencyMs:Date.now()-started};
+  if(policy.completed||policy.matchEnded)return {strategy,completed:policy.completed,matchEnded:Boolean(policy.matchEnded),goalProgress:policy.goalProgress,needsVisual:false,action:null,plan,stepsSinceVisual,visualReview:false,latencyMs:Date.now()-started};
   const reason=!plan?'Initial visual plan':policy.requiresVisualReason|| (!tactical&&stepsSinceVisual>=VISUAL_CHECKPOINT_EVERY?'Periodic visual checkpoint':null);
   if(image){
    const result=await review({game,state,image,history:recent,plan,policy,reason:reason||(typeof reviewReason==='string'?reviewReason.slice(0,240):'Requested visual review')},signal);

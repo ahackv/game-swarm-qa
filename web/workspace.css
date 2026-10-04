@@ -1,3 +1,4 @@
+@import url('/decision-inspector.css');
 :root{--paper:#f3f0e5;--card:#faf8ef;--ink:#20302a;--line:#d3d4c8;--accent:#b6ee4b;--muted:#67736b;--orange:#d9783f}
 *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:'Avenir Next',Avenir,sans-serif}a{color:inherit}button,a,select{touch-action:manipulation}button,select{font:600 13px 'Avenir Next',sans-serif}button,.button{border:1px solid var(--ink);padding:13px 17px;border-radius:3px;text-decoration:none;background:transparent;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;justify-content:space-between;gap:24px;font-weight:600;font-size:13px}button:hover,.button:hover{background:#e2e5d7}.primary{background:var(--accent)}button:disabled{opacity:.4;cursor:default}button:focus-visible,a:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #5e930e;outline-offset:4px}[hidden]{display:none!important}
 main{max-width:1360px;margin:auto;padding:28px 38px}.site-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:23px;border-bottom:1px solid var(--ink);gap:16px}.wordmark{font-size:17px;font-weight:800;letter-spacing:-.07em;text-decoration:none;display:flex;gap:10px;align-items:center}.brand-mark{background:var(--ink);color:var(--accent);width:24px;height:24px;text-align:center;line-height:24px;font-size:20px}.eyebrow{font:10px/1.5 Menlo,monospace;letter-spacing:.12em;color:var(--muted)}.breadcrumb{display:inline-block;font:11px Menlo,monospace;text-decoration:none;margin:25px 0 20px}.breadcrumb:hover{text-decoration:underline}
@@ -7,5 +8,48 @@ h1,h2,h3,p{margin:0}h1{font-family:'Avenir Next Condensed','Avenir Next',sans-se
 @media(max-width:1050px){main{padding:24px}.game-overview{grid-template-columns:1.5fr 1fr;gap:18px}.explore-card{padding:19px;gap:12px}.explore-card h2{font-size:25px}.play-workspace{grid-template-columns:minmax(0,1fr) 290px;gap:18px}.agent-sidebar{padding:16px}}
 @media(max-width:760px){main{padding:20px 17px}.site-header>.eyebrow{font-size:8px;letter-spacing:.05em}.game-intro{display:block}.game-intro p{margin-top:12px;max-width:none}h1{font-size:44px}.game-overview,.play-workspace{grid-template-columns:1fr}.game-preview img{min-height:0}.explore-card{gap:17px;padding:22px}.game-overview .explore-card h2 br{display:none}.section-heading{display:block}.section-heading p{margin-top:10px}.section-heading h2{font-size:26px}.finding-row{gap:13px;flex-wrap:wrap;padding:20px 4px}.finding-copy{flex-basis:calc(100% - 45px)}.finding-copy h3{font-size:18px}.finding-status{margin-left:28px}.finding-arrow{margin-left:auto;font-size:20px}.preview-caption{font-size:8px;padding:11px}.explore-header{align-items:flex-start}.explore-header h1{font-size:29px}.native-metrics{gap:20px}.play-toolbar{align-items:flex-start}.metric-value{font-size:18px}.live-badge{font-size:9px}.profiles{grid-template-columns:1fr 1fr;gap:8px}.profile-option{padding:11px;gap:8px;align-items:flex-start}.profile-option .avatar{width:25px;height:25px}.profile-option .check{display:none}.agent-thinking{min-height:0}footer{display:block}footer span{display:block;margin-top:5px}}
 .screen{position:relative}.game-cover{position:absolute;inset:0;pointer-events:none}.game-cover img{display:block;width:100%;height:100%;object-fit:cover}.game-cover>span{position:absolute;bottom:15px;left:15px;padding:9px 11px;background:var(--paper);font:9px Menlo,monospace;letter-spacing:.06em}
-@media(max-width:760px){.play-column{display:contents}.play-workspace .screen{grid-row:1}.play-workspace .play-toolbar{grid-row:2}.play-workspace .agent-sidebar{grid-row:3}.play-workspace .run-history{grid-row:4;margin-top:8px}}
+.explore-page main{padding-top:20px}
+.explore-page .site-header{padding-bottom:15px}
+.explore-page .breadcrumb{margin:0}
+.explore-header{margin:17px 0}
+.play-setup{display:flex;justify-content:space-between;align-items:center;gap:24px;margin-bottom:20px}
+.play-setup .profiles{grid-template-columns:1fr 1fr;gap:10px;flex:1;max-width:640px}
+.play-setup .profiles legend{font-size:11px;margin-bottom:6px}
+.play-setup .profile-option{padding:9px 12px}
+.play-setup .profile-option small{margin-top:1px}
+.play-start{min-width:270px;padding-top:15px}
+.play-start .run-buttons{margin:0 0 5px}
+.play-start .caption{text-align:right}
+.model-selector{flex:0 0 200px;min-width:0}
+.model-selector label{display:block;font-size:11px;margin-bottom:6px}
+.model-selector select{width:100%;padding:11px 12px;border:1px solid var(--ink);border-radius:3px;background:var(--card);color:var(--ink);cursor:pointer}
+.model-selector select:disabled{opacity:.6;cursor:default}
+.model-selector .caption{font-size:9px;margin-top:5px}
+.play-workspace{grid-template-columns:280px minmax(0,1fr);gap:20px;align-items:stretch}
+.agent-sidebar{contain:size;min-height:0;display:flex;flex-direction:column;padding:18px;overflow:hidden}
+.activity-heading{display:flex;align-items:center;justify-content:space-between}
+.activity-heading h2{margin:0;font-size:19px}
+.activity-mark{font-size:23px;color:var(--muted)}
+.agent-thinking{margin:12px 0 0;padding:13px 0 0;min-height:96px;flex:none}
+.agent-thinking p{line-height:1.55}
+.session-strip{margin-top:8px;padding-top:10px;flex:none}
+.inspection-hint{margin-top:12px}
+.action-feed{flex:1;min-height:0;max-height:none;margin:9px -8px 10px;padding:0 8px;overscroll-behavior:contain;scrollbar-width:thin}
+.action-feed:empty::after{content:'Moves will appear here as the agent plays.';display:block;font-size:12px;line-height:1.6;color:var(--muted);padding:15px 0}
+.action-feed li{padding:0}
+.move-detail{display:block;text-align:left;width:100%;border:0;border-radius:0;padding:11px 4px;font-size:11px;font-weight:500;line-height:1.5;overflow-wrap:anywhere}
+.move-detail code{margin-top:4px;font-size:9px;line-height:1.5}
+.move-meta{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.decision-latency{font:10px/1.5 Menlo,monospace;white-space:nowrap;color:var(--ink)}
+.move-detail:focus-visible{outline-offset:-3px}
+.move-detail:hover{background:#e9efdb}
+.move-detail .inspect-arrow{float:right;color:var(--muted);margin-left:8px}
+#engine-label{border-top:1px solid var(--line);padding-top:10px;flex:none}
+@media(max-width:1050px){.play-workspace{grid-template-columns:250px minmax(0,1fr);gap:16px}.agent-sidebar{padding:14px}.play-setup{gap:16px}.play-start{min-width:230px}.model-selector{flex-basis:175px}.play-setup .profile-option{padding:9px;gap:8px}.play-setup .profile-option .avatar{display:none}}
+@media(max-width:760px){
+  .explore-page main{padding-top:16px}.explore-page .breadcrumb{font-size:9px;text-align:right}.explore-header{margin:16px 0}.explore-header h1{font-size:27px}.live-badge{max-width:100px;line-height:1.5}
+  .play-setup{display:block;margin-bottom:16px}.play-setup .profiles{max-width:none;gap:8px}.play-setup .profile-option{padding:8px 10px}.play-setup .profile-option small{font-size:9px}.play-start{padding-top:10px}.play-start .caption{display:none}.play-start button{padding:10px 14px}
+  .model-selector{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:5px 10px;margin-top:12px}.model-selector label{margin:0}.model-selector select{padding:9px 10px}.model-selector .caption{grid-column:1 / -1;margin:0}.decision-latency{font-size:9px}
+  .play-workspace{grid-template-columns:1fr;gap:14px}.agent-sidebar{contain:none;height:248px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto minmax(0,1fr) auto;column-gap:14px;padding:12px}.activity-heading{grid-column:1 / -1}.activity-heading h2{font-size:17px}.activity-mark{font-size:20px}.agent-thinking{grid-column:1;grid-row:2;margin-top:8px;padding-top:9px;min-height:0}.agent-thinking p{font-size:11px}.agent-thinking .eyebrow{font-size:9px}.session-strip{grid-row:3;grid-column:1;margin-top:0;padding-top:7px;gap:8px}.session-strip .metric-label{font-size:8px}.session-strip .metric-value{font-size:17px}.inspection-hint{display:none}.action-feed{grid-column:2;grid-row:2 / 4;margin:8px 0 0;padding:0 0 0 10px;border-left:1px solid var(--line)}.move-detail{font-size:10px;padding:9px 2px}.move-detail code{font-size:8px}#engine-label{display:none}.play-column{min-width:0}.play-toolbar{padding:10px 0}
+}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
