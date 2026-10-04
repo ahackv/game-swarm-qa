@@ -6,7 +6,6 @@ document.title = config.title + ' · Swarm QA';
 document.querySelector('#game-title').textContent = config.title;
 document.querySelector('#credit').textContent = 'Original game by ' + config.author + ' · local assets · muted audio';
 document.querySelector('#rate').textContent = config.fps + ' native physics fps · 2 observations / game second';
-document.querySelector('#note').innerHTML = '<strong>Time moves only when the agent is ready.</strong> By default, it sees a screenshot every 500 ms of game time. The game stays frozen during inference. You can step individual physics frames below.';
 document.querySelector('#quick').textContent = isOvo ? 'Start level 1' : 'Start quick match';
 document.querySelector('#credits').hidden = !isOvo;
 document.querySelector('#progression').hidden = !isOvo;
@@ -55,7 +54,7 @@ function refresh() {
   document.querySelector('#frames').textContent=String(state.clock.frames);
   if(isOvo)document.querySelector('#progression').textContent='Native progression: '+state.unlockedLevels+' / 52 levels unlocked.'+(state.state==='Credits'?' Double-click the central DEDRA logo, then step one frame to inspect the result.':'');
   document.querySelector('#state').textContent=JSON.stringify(state,null,2);
-  document.querySelector('#status-text').textContent=preview?'Preview · 4 fps':'Frozen · ready for agent';
+  document.querySelector('#status-text').textContent=preview?'Preview · 4 fps':'Ready';
   document.querySelector('#status').classList.add('ready');
 }
 const codes={ArrowLeft:37,ArrowRight:39,ArrowUp:38,ArrowDown:40,KeyW:87,KeyA:65,KeyS:83,KeyD:68,KeyX:88,KeyZ:90,KeyL:76,KeyK:75,Space:32,KeyP:80,KeyR:82,Enter:13,Escape:27,ShiftLeft:16};
@@ -90,7 +89,8 @@ function stopPreview() {
   document.querySelector('#preview').textContent='Preview at 4 fps';
   refresh();
 }
-async function quickMatch({fireball=false} = {}) {
+async function quickMatch({fireball=false,signal} = {}) {
+  signal?.throwIfAborted();
   stopPreview();
   const {game,require}=runtime();
   if(game.state.current!=='menu') throw Error('Reload to start a fresh quick match.');
@@ -98,9 +98,11 @@ async function quickMatch({fireball=false} = {}) {
   // Advance menu transitions and pre-match setup explicitly, allowing asset tasks
   // to complete without letting the simulation clock run on its own.
   for(let i=0;i<20;i++) {
+    signal?.throwIfAborted();
     const inventory=require(23).Inventory.instance;
     if(fireball && inventory.isQuickMatch)inventory.players[0]=1;
     await step({frames:20,keys:[]});
+    signal?.throwIfAborted();
     if(runtime().game.state.current==='gameplay' && runtime().game.state.getCurrentState().constructor.loadedLevel) break;
     await sleep(30);
   }
@@ -115,14 +117,17 @@ async function act({frames,keys,holdFrames=frames}) {
   const heldState=await agentStep({frames:holdFrames,keys});
   return holdFrames<frames ? agentStep({frames:frames-holdFrames,keys:[]}) : heldState;
 }
-async function startLevel(level = 1) {
+async function startLevel(level = 1,{signal} = {}) {
+  signal?.throwIfAborted();
   stopPreview();
   if(!ready) throw Error('Game is still loading.');
   if(!Number.isInteger(level) || level < 1 || level > 52) throw Error('level must be an integer from 1 to 52.');
   const {win} = runtime();
   win.c2_callFunction('Menu > Level',[level-1]);
   for(let i=0;i<12;i++) {
+    signal?.throwIfAborted();
     await step({frames:20,keys:[]});
+    signal?.throwIfAborted();
     if(runtime().game.running_layout.name==='Level '+level && observe().players.some(player=>player.behaviors[0]?.enabled && !player.behaviors[0]?.ignoreInput))break;
   }
   document.querySelector('#quick').textContent = 'Restart level 1';

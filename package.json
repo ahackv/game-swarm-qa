@@ -11,13 +11,16 @@
     "extract:ovo": "node scripts/extract-ovo.mjs",
     "extract:all": "node scripts/extract.mjs && node scripts/extract-ovo.mjs",
     "start": "node server.mjs",
-    "verify": "node scripts/verify.mjs && node scripts/verify-ovo.mjs && node scripts/verify-credits.mjs && node scripts/verify-rehearsal.mjs",
+    "verify": "node scripts/verify.mjs && node scripts/verify-ovo.mjs && node scripts/verify-credits.mjs && node scripts/verify-rehearsal.mjs && node scripts/verify-hybrid.mjs && node scripts/verify-hybrid-ui.mjs",
     "verify:football": "node scripts/verify.mjs",
     "verify:ovo": "node scripts/verify-ovo.mjs",
     "verify:credits": "node scripts/verify-credits.mjs",
     "agent:football": "node scripts/run-agent.mjs football-legends",
     "agent:ovo": "node scripts/run-agent.mjs ovo",
-    "verify:rehearsal": "node scripts/verify-rehearsal.mjs"
+    "verify:rehearsal": "node scripts/verify-rehearsal.mjs",
+    "verify:hybrid": "node scripts/verify-hybrid.mjs && node scripts/verify-hybrid-ui.mjs",
+    "benchmark:hybrid:football": "AGENT_DECISIONS=90 node scripts/benchmark-hybrid.mjs football-legends",
+    "benchmark:hybrid:ovo": "node scripts/benchmark-hybrid.mjs ovo"
   },
   "devDependencies": {
     "playwright": "1.62.1"

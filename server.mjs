@@ -3,6 +3,7 @@ import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import {decide,agentConfig} from './agent.mjs';
+import {hybridDecide,hybridConfig} from './hybrid.mjs';
 
 const root = resolve(import.meta.dirname);
 const port = Number(process.env.PORT || 4173);
@@ -12,8 +13,8 @@ const json=(res,status,value)=>{res.writeHead(status,{'Content-Type':'applicatio
 const server = http.createServer(async (req, res) => {
   try {
     const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
-    if(pathname==='/api/agent/config') {json(res,200,agentConfig(new URL(req.url,'http://localhost').searchParams.get('game')));return;}
-    if(pathname==='/api/agent/decision') {
+    if(pathname==='/api/agent/config') {const game=new URL(req.url,'http://localhost').searchParams.get('game');json(res,200,{...agentConfig(game),hybrid:hybridConfig(game)});return;}
+    if(pathname==='/api/agent/decision'||pathname==='/api/hybrid/decision') {
       if(req.method!=='POST'){json(res,405,{error:'Use POST.'});return;}
       if(req.headers.origin && req.headers.origin!=='http://'+req.headers.host){json(res,403,{error:'Origin rejected.'});return;}
       if(busy){json(res,409,{error:'An agent decision is already running.'});return;}
@@ -23,9 +24,9 @@ const server = http.createServer(async (req, res) => {
       try {
         const chunks=[];let size=0;for await(const chunk of req){size+=chunk.length;if(size>3_500_000)throw Error('Request too large.');chunks.push(chunk);}
         const input=JSON.parse(Buffer.concat(chunks).toString('utf8'));
-        const result=await decide(input,AbortSignal.any([controller.signal,AbortSignal.timeout(60000)]));
+        const result=await (pathname==='/api/hybrid/decision'?hybridDecide:decide)(input,AbortSignal.any([controller.signal,AbortSignal.timeout(60000)]));
         const directory=resolve(root,'private/runs');await mkdir(directory,{recursive:true});
-        await writeFile(resolve(directory,randomUUID()+'.json'),JSON.stringify({game:input.game,state:input.state,...result,guided:true,createdAt:new Date().toISOString()},null,2));
+        await writeFile(resolve(directory,randomUUID()+'.json'),JSON.stringify({engine:pathname.includes('/hybrid/')?'hybrid':'visual',game:input.game,state:input.state,...result,guided:true,createdAt:new Date().toISOString()},null,2));
         json(res,200,result);
       } catch(error) {json(res,502,{error:error.message});}
       finally {busy=false;}

@@ -59,14 +59,18 @@ function decisionRecord(game, entry, index) {
     latencyMs: finite(entry.latencyMs) ? entry.latencyMs : null,
     usage: numericUsage(entry.usage),
     apiEquivalentCostUsd: finite(entry.apiEquivalentCostUsd) ? entry.apiEquivalentCostUsd : null,
+    visualReview: entry.visualReview === true,
+    routing: entry.routing ? {choice:text(entry.routing.choice),confidence:finite(entry.routing.confidence)?entry.routing.confidence:null} : null,
+    plan: entry.plan ? {id:text(entry.plan.id),phase:text(entry.plan.phase),goal:text(entry.plan.goal),notes:text(entry.plan.notes)} : null,
+    jev: entry.jev ? {model:text(entry.jev.model),choice:text(entry.jev.choice),confidence:finite(entry.jev.confidence)?entry.jev.confidence:null,latencyMs:finite(entry.jev.latencyMs)?entry.jev.latencyMs:null} : null,
     guided: true,
   };
 }
 
 /** Build a portable, image-free record. This is also usable without a DOM. */
-export function buildReport({game, history = [], baseline, final, status = '', startedAt, finishedAt, mode = 'live'} = {}) {
+export function buildReport({game, history = [], baseline, final, status = '', startedAt, finishedAt, mode = 'live', strategy = 'routed'} = {}) {
   if (!['football-legends', 'ovo'].includes(game)) throw Error('Unknown report game.');
-  if (!['live', 'scripted'].includes(mode)) throw Error('Unknown report mode.');
+  if (!['live', 'scripted', 'hybrid'].includes(mode)) throw Error('Unknown report mode.');
   const decisions = history.map((entry, index) => decisionRecord(game, entry, index));
   const initial = snapshot(game, baseline || history[0]?.before);
   const last = snapshot(game, final || history.at(-1)?.after || baseline);
@@ -75,8 +79,10 @@ export function buildReport({game, history = [], baseline, final, status = '', s
   if (initial && last) pairs.push([initial, last]);
   const sampledPlayers = states.map(state => player(game, state)).filter(Boolean);
   const totalInferenceMs = decisions.reduce((sum, entry) => sum + (entry.latencyMs || 0), 0);
-  const models = unique(decisions.map(entry => entry.model));
-  const transports = unique(decisions.map(entry => entry.transport));
+  const models = unique(decisions.flatMap(entry => [entry.model, entry.jev?.model]));
+  const transports = unique(decisions.flatMap(entry => [entry.transport, ...(entry.jev ? ['OpenRouter'] : [])]));
+  const visualReviews = mode === 'hybrid' ? decisions.filter(entry=>entry.visualReview).length : mode === 'live' ? decisions.length : 0;
+  const jevCalls = decisions.filter(entry=>entry.model.startsWith('typesafe/')).length + decisions.filter(entry=>entry.visualReview&&entry.jev).length;
   const nativeElapsed = last?.clock?.simulationSeconds - initial?.clock?.simulationSeconds;
   const simulationSeconds = finite(nativeElapsed) && nativeElapsed >= 0 ? nativeElapsed : null;
   const startedMs = typeof startedAt === 'number' ? startedAt : Date.parse(startedAt);
@@ -130,10 +136,10 @@ export function buildReport({game, history = [], baseline, final, status = '', s
     facts.push('Run the agent to collect native game observations and an action record.');
   }
   return {
-    schemaVersion: 1, createdAt: new Date().toISOString(), game, mode, guided: true,
-    provenance: mode === 'scripted' ? 'This run replayed a scripted input sequence for the displayed seed hypothesis. No model inference or independent discovery is claimed.' : 'The agent received the displayed seed hypothesis. This is guided exploration, not a claim of independent discovery.',
+    schemaVersion: 1, createdAt: new Date().toISOString(), game, mode, ...(mode==='hybrid'?{strategy}:{}), guided: true,
+    provenance: mode === 'scripted' ? 'This run replayed a scripted input sequence for the displayed seed hypothesis. No model inference or independent discovery is claimed.' : mode === 'hybrid' ? strategy==='tactical' ? 'Jev chose movement actions from the supplied strategy and current telemetry; local code calculated exact key timing. '+(visualReviews?'A visual LLM reviewed uncertain situations.':'No visual LLM calls were needed in this run.')+' This is a guided hybrid run.' : 'A visual LLM established and reviewed the supplied plan. Jev routed routine decisions from telemetry; local code calculated exact key timing. This is a guided hybrid run.' : 'The agent received the displayed seed hypothesis. This is guided exploration, not a claim of independent discovery.',
     status: text(status), outcome, title, hypothesis, facts, interpretation, nextStep,
-    metrics: {decisions: decisions.length, simulationSeconds, wallSeconds, totalInferenceMs, averageInferenceMs: decisions.length ? totalInferenceMs / decisions.length : null, models, transports},
+    metrics: {decisions: decisions.length, simulationSeconds, wallSeconds, totalInferenceMs, averageInferenceMs: decisions.length ? totalInferenceMs / decisions.length : null, models, transports,visualReviews,jevCalls},
     baseline: initial, final: last, decisions,
   };
 }
@@ -154,7 +160,7 @@ export function renderReport(options, root = document.querySelector('#finding-re
   root.setAttribute('aria-label', 'Recorded QA finding');
   const header = element('div', 'report-header');
   const heading = element('div');
-  heading.append(element('div', 'eyebrow', 'Run evidence / ' + (report.mode === 'scripted' ? 'Scripted rehearsal' : 'Guided exploration')), element('h2', 'report-title', report.title));
+  heading.append(element('div', 'eyebrow', 'Run evidence / ' + (report.mode === 'scripted' ? 'Scripted rehearsal' : report.mode === 'hybrid' ? 'Guided hybrid' : 'Guided exploration')), element('h2', 'report-title', report.title));
   const download = element('button', 'report-download', 'Export run JSON ↓');
   download.type = 'button';
   download.disabled = !report.decisions.length;
@@ -173,6 +179,7 @@ export function renderReport(options, root = document.querySelector('#finding-re
     ['Game time', seconds(report.metrics.simulationSeconds)],
     [report.mode === 'scripted' ? 'Control' : 'Model wait', report.mode === 'scripted' ? 'Scripted' : seconds(report.metrics.totalInferenceMs / 1000)],
     ...(report.metrics.wallSeconds === null ? [] : [['Elapsed', seconds(report.metrics.wallSeconds)]]),
+    ...(report.mode==='hybrid' ? [['Visual reviews',String(report.metrics.visualReviews)],['Jev calls',String(report.metrics.jevCalls)]] : []),
   ]) {
     const item = element('div'); item.append(element('dt', '', label), element('dd', '', value)); metrics.append(item);
   }
@@ -185,7 +192,7 @@ export function renderReport(options, root = document.querySelector('#finding-re
   const body = element('div', 'report-body'); body.append(evidence, hypothesis);
   const next = element('p', 'report-next'); next.append(element('strong', '', 'Next QA step. '), document.createTextNode(report.nextStep));
   const route = report.mode === 'scripted' ? 'Scripted input sequence' : report.metrics.models.length ? report.metrics.models.join(', ') + ' · ' + report.metrics.transports.join(', ') : 'No model decisions recorded';
-  const metadata = element('p', 'report-metadata', route + (report.mode === 'scripted' ? ' · Native state + inputs · Scripted rehearsal' : ' · Screenshot + instrumented state · Guided prompt'));
+  const metadata = element('p', 'report-metadata', route + (report.mode === 'scripted' ? ' · Native state + inputs · Scripted rehearsal' : report.mode === 'hybrid' ? report.strategy==='tactical'?' · Jev movement + visual review on demand · Guided hybrid':' · Telemetry decisions + visual checkpoints · Guided hybrid' : ' · Screenshot + instrumented state · Guided prompt'));
   root.replaceChildren(header, metrics, body, next, metadata);
   return report;
 }

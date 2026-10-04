@@ -22,7 +22,7 @@
 </head>
 <body>
 <main>
-  <header><div><a class="back" href="/">← Swarm QA / All games</a><div class="eyebrow">Guided QA / Agent-controlled time</div><h1 id="game-title">Loading game</h1></div><div id="status" class="status" role="status"><span class="dot"></span><span id="status-text">Loading game</span></div></header>
+  <header><div><a class="back" href="/">← Swarm QA / All games</a><div class="eyebrow">Swarm QA / Guided playtest</div><h1 id="game-title">Loading game</h1></div><div id="status" class="status" role="status"><span class="dot"></span><span id="status-text">Loading game</span></div></header>
   <div class="workspace"><div class="play-column">
   <div class="screen"><iframe id="game" title="Extracted game"></iframe></div>
   <div class="controls">
@@ -34,12 +34,11 @@
     <button id="preview" aria-pressed="false" disabled>Preview at 4 fps</button>
     <div class="clock"><div><span>SIMULATION TIME</span><b id="sim">0.000 s</b></div><div><span>FRAMES ADVANCED</span><b id="frames">0</b></div></div>
   </div>
-  <p class="note" id="note"></p>
   <p class="note" id="progression" hidden></p>
   </div>
   <section class="agent-panel" aria-label="Swarm QA agent">
-    <div class="agent-top"><div><div class="eyebrow">Swarm QA / Guided exploration</div><h2>Watch the agent test a hypothesis</h2></div><div class="agent-actions"><select id="agent-horizon" aria-label="Agent observation cadence"><option value="2hz">2 screenshots / game second</option><option value="4hz">4 screenshots / game second</option><option value="native">Inspect every physics frame</option><option value="adaptive">Model chooses frame batch</option></select><select id="agent-rate" aria-label="Maximum display update rate"><option value="2">2 updates / second maximum</option><option value="4">4 updates / second maximum</option><option value="20">20 updates / second maximum</option></select><button id="agent-run" class="primary" disabled>Run Luna agent →</button><button id="agent-stop" disabled>Stop</button><button id="agent-rehearse" hidden disabled>Run guided rehearsal</button></div></div>
-    <p class="agent-description" id="agent-description">The model receives a screenshot and instrumented game state, then chooses ordinary key inputs. The game waits during inference.</p>
+    <div class="agent-top"><div><div class="eyebrow">Swarm QA / Guided exploration</div><h2>Watch the agent test a hypothesis</h2></div><div class="agent-actions"><select id="agent-mode" aria-label="Agent strategy"><option value="live">Visual agent</option><option value="tactical">Jev movement · LLM on demand</option><option value="hybrid">Jev phase routing · visual checkpoints</option></select><select id="agent-horizon" aria-label="Decision interval"><option value="2hz">2 decisions / game second</option><option value="4hz">4 decisions / game second</option><option value="native">Inspect every physics frame</option><option value="adaptive">Model chooses frame batch</option></select><select id="agent-rate" aria-label="Maximum display update rate"><option value="2">2 updates / second maximum</option><option value="4">4 updates / second maximum</option><option value="20">20 updates / second maximum</option></select><button id="agent-run" class="primary" disabled>Run Luna agent →</button><button id="agent-stop" disabled>Stop</button><button id="agent-rehearse" hidden disabled>Run guided rehearsal</button></div></div>
+    <p class="agent-description" id="agent-description">Watch the agent try the supplied strategy, then inspect its actions and the outcome.</p>
     <div class="agent-live"><span id="agent-status" role="status">Connecting to local agent service…</span><span><b id="agent-count">0</b> <span id="agent-count-label">decisions</span></span><span id="agent-model">GPT-6 Luna</span></div>
     <p class="hypothesis" id="agent-hypothesis"></p><ol class="ledger" id="agent-ledger" aria-label="Observed actions and outcomes"></ol>
   </section></div>
