@@ -9,7 +9,7 @@ const envPath=new URL('.env',import.meta.url);
 const local=existsSync(envPath)?parseEnv(readFileSync(envPath,'utf8')):{};
 const apiKey=local.OPENAI_API_KEY || process.env.OPENAI_API_KEY;
 if(apiKey)process.env.OPENAI_API_KEY=apiKey;
-for(const name of ['CHATGPT_AUTH_TOKEN_PROVIDER_URL','CHATGPT_AUTH_TOKEN_PROVIDER_API_KEY','CHATGPT_AUTH_API_KEY','CHATGPT_CODEX_PROXY_URL','CHATGPT_CODEX_PROXY_API_KEY'])if(local[name])process.env[name]=local[name];
+for(const name of ['CHATGPT_AUTH_TOKEN_PROVIDER_URL','CHATGPT_AUTH_TOKEN_PROVIDER_API_KEY','CHATGPT_AUTH_API_KEY','CHATGPT_CODEX_PROXY_URL','CHATGPT_CODEX_PROXY_API_KEY','CHATGPT_RESPONSES_WEBSOCKET_MODE'])if(local[name])process.env[name]=local[name];
 export function modelForGame(){return process.env.GAMEPLAY_LLM_MODEL||local.GAMEPLAY_LLM_MODEL||'chatgpt-gpt-6-luna-fast';}
 export function agentConfig(game){
  const model=modelForGame(game),subscription=isChatGptModelId(model);

@@ -3,6 +3,8 @@ private/
 .env.*
 !.env.example
 node_modules/
+dist/
+.vercel/
 evidence/
 research/
 *.log

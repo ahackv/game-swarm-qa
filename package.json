@@ -7,6 +7,8 @@
     "node": ">=22"
   },
   "scripts": {
+    "build": "node scripts/build.mjs",
+    "verify:deployment": "node scripts/verify-deployment.mjs",
     "extract": "node scripts/extract.mjs",
     "extract:ovo": "node scripts/extract-ovo.mjs",
     "extract:all": "node scripts/extract.mjs && node scripts/extract-ovo.mjs",
