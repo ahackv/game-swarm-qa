@@ -52,11 +52,10 @@ Set these values in the ignored `.env`, then restart the server:
 ```dotenv
 OPENAI_API_KEY=your-key-here
 OPENROUTER_API_KEY=your-key-for-hybrid-mode
-FOOTBALL_MODEL=chatgpt-gpt-6-luna-fast
-OVO_MODEL=chatgpt-gpt-6-luna-fast
+GAMEPLAY_LLM_MODEL=chatgpt-gpt-6-luna-fast
 ```
 
-The demo uses [`@ljoukov/llm` 9.0.0](https://www.npmjs.com/package/@ljoukov/llm/v/9.0.0). **Run Luna Fast agent** starts Football's native 1v1 quick match using a fireball character against the built-in bot. OvO also defaults to Luna Fast, using the verified wall-jump hint. Both games use your existing local Codex/ChatGPT login and the library’s `-fast` priority route. Set either model to `chatgpt-gpt-6.1-sol-fast` for the stronger fallback. Subscription tokens remain on the server; no cloud keys are needed for this local flow. An existing token provider or Codex proxy can also be configured using the library's documented environment variables. The UI displays the active credential route.
+The demo uses [`@ljoukov/llm` 9.0.0](https://www.npmjs.com/package/@ljoukov/llm/v/9.0.0). **Run Luna Fast agent** starts Football's native 1v1 quick match using a fireball character against the built-in bot. OvO also defaults to Luna Fast, using the verified wall-jump hint. Both games use your existing local Codex/ChatGPT login and the library’s `-fast` priority route. Set `GAMEPLAY_LLM_MODEL=chatgpt-gpt-6.1-sol-fast` to use the stronger fallback for both games. Subscription tokens remain on the server; no cloud keys are needed for this local flow. An existing token provider or Codex proxy can also be configured using the library's documented environment variables. The UI displays the active credential route.
 
 A subsequent Luna subscription run also completed OvO in 18 decisions at 2 Hz (9 s game time, 71.47 s total inference), confirming that Sol is not required for the guided route.
 
@@ -86,7 +85,7 @@ Direct Jev movement had median call latency **107 ms on OvO** and **120 ms on Fo
 
 Separate real Chrome UI runs also completed: OvO in **9.60 s elapsed** at the default display setting (15 Jev calls, 1 visual review); Football scored **1–0 in 20.46 s elapsed** at the fastest display setting (81 Jev calls, 2 visual reviews). The longer Football trajectory confirms that its first-goal timing varies with the native bot and ball, while routine decisions remain fast.
 
-The model receives a screenshot and compact instrumented state; validated JSON selects keys, a frame count and a reason. **Guided exploration** is visible in the UI: these are supplied hypotheses, not independent discoveries. Both routes can be changed with `FOOTBALL_MODEL` and `OVO_MODEL` (process environment overrides `.env` model settings), including `gpt-6-luna-fast` to use the OpenAI API key instead of the subscription. `OPENAI_MODEL` remains a fallback for the football route.
+The model receives a screenshot and compact instrumented state; validated JSON selects keys, a frame count and a reason. **Guided exploration** is visible in the UI: these are supplied hypotheses, not independent discoveries. `GAMEPLAY_LLM_MODEL` selects the visual model for all games and findings; process environment overrides `.env`, with `chatgpt-gpt-6-luna-fast` as the default. Set it to `gpt-6-luna-fast` to use the OpenAI API key instead of the subscription.
 
 **Two decisions per simulated second** is the default: every decision advances exactly 500 ms (20 native Football frames or 30 OvO frames). Visual models use low thinking effort to reduce latency. A key can be tapped for fewer frames using `holdFrames`; inputs are released for the remainder of that interval. Native physics still runs every frame. Inference time does not advance game time. Four observations per game second, **Inspect every physics frame**, and adaptive batches remain optional in visual mode. The display defaults to at most two updates per real second and accounts for inference time instead of adding an extra delay after each call. **Stop** cancels inference and releases input.
 

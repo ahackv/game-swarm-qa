@@ -10,7 +10,7 @@ const local=existsSync(envPath)?parseEnv(readFileSync(envPath,'utf8')):{};
 const apiKey=local.OPENAI_API_KEY || process.env.OPENAI_API_KEY;
 if(apiKey)process.env.OPENAI_API_KEY=apiKey;
 for(const name of ['CHATGPT_AUTH_TOKEN_PROVIDER_URL','CHATGPT_AUTH_TOKEN_PROVIDER_API_KEY','CHATGPT_AUTH_API_KEY','CHATGPT_CODEX_PROXY_URL','CHATGPT_CODEX_PROXY_API_KEY'])if(local[name])process.env[name]=local[name];
-export function modelForGame(game){return game==='ovo'?(process.env.OVO_MODEL||local.OVO_MODEL||'chatgpt-gpt-6-luna-fast'):(process.env.FOOTBALL_MODEL||local.FOOTBALL_MODEL||local.OPENAI_MODEL||process.env.OPENAI_MODEL||'chatgpt-gpt-6-luna-fast');}
+export function modelForGame(){return process.env.GAMEPLAY_LLM_MODEL||local.GAMEPLAY_LLM_MODEL||'chatgpt-gpt-6-luna-fast';}
 export function agentConfig(game){
  const model=modelForGame(game),subscription=isChatGptModelId(model);
  const configured=subscription?(existsSync(join(process.env.CODEX_HOME||join(homedir(),'.codex'),'auth.json'))||Boolean(process.env.CHATGPT_AUTH_TOKEN_PROVIDER_URL&&(process.env.CHATGPT_AUTH_TOKEN_PROVIDER_API_KEY||process.env.CHATGPT_AUTH_API_KEY))||Boolean(process.env.CHATGPT_CODEX_PROXY_URL&&process.env.CHATGPT_CODEX_PROXY_API_KEY)):Boolean(apiKey);
