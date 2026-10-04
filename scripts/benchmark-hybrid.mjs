@@ -129,7 +129,7 @@ export async function benchmarkHybrid({game = 'football-legends', strategy = 'ro
   const persist = () => writeFile(directory + '/run.json', JSON.stringify(summary(), null, 2));
   try {
     page = await b.newPage({viewport: {width: 1280, height: 1040}});
-    await page.goto(baseUrl + '/' + game);
+    await page.goto(baseUrl + '/' + game + '/findings/' + (game === 'ovo' ? 'left-wall-shortcut' : 'goal-camping'));
     await page.waitForFunction(() => window.gameAgent?.observe().ready, {}, {timeout: 15000});
     if (game === 'football-legends') await page.evaluate(() => gameAgent.startQuickMatch({fireball: true}));
     else await page.evaluate(() => gameAgent.startLevel(9));

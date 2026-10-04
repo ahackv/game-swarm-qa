@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Agent clock · Game</title>
   <style>
+    [hidden]{display:none!important}.finding-intro{margin:0 0 20px}.finding-intro h2{font-size:24px;letter-spacing:-.035em;margin:0}.finding-intro .note{margin:7px 0 0}
     :root{--paper:#f3f0e5;--ink:#20302a;--line:#d3d4c8;--accent:#b6ee4b;--muted:#67736b}
     *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:'Avenir Next',Avenir,sans-serif}
     main{max-width:1510px;margin:auto;padding:24px 30px}.workspace{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:22px;align-items:start}.play-column{min-width:0}header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:20px}
@@ -51,5 +52,6 @@ gameAgent.observe() // native state and clock</pre><pre id="state"></pre></detai
 </main>
 <script type="module" src="/ui.js"></script>
 <script type="module" src="/agent-ui.js"></script>
+<script type="module" src="/finding.js"></script>
 </body>
 </html>

@@ -2,7 +2,7 @@ import {describe as describeState} from './observations.js';
 import {renderReport} from './report.js';
 import {ovoRehearsalAction} from './rehearsal.js';
 
-const game=location.pathname.slice(1);
+const game=location.pathname.split('/')[1];
 const api=()=>window.gameAgent;
 const run=document.querySelector('#agent-run'),stop=document.querySelector('#agent-stop'),rehearse=document.querySelector('#agent-rehearse'),status=document.querySelector('#agent-status'),ledger=document.querySelector('#agent-ledger');
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));

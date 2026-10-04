@@ -12,7 +12,7 @@ const b=await browser();try{
  p.on('pageerror',e=>errors.push(e.message));
  p.on('request',r=>{if(!/^(localhost|127\.0\.0\.1)$/.test(new URL(r.url()).hostname))external.push(r.url());});
  p.on('response',r=>{if(r.status()>=400&&!r.url().endsWith('favicon.ico'))failed.push({url:r.url(),status:r.status()});});
- await p.goto('http://localhost:4173/ovo');
+ await p.goto('http://localhost:4173/ovo/findings/left-wall-shortcut');
  await p.waitForFunction(()=>window.gameAgent?.observe().ready,{},{timeout:15000});
  await p.evaluate(()=>gameAgent.startLevel(1));
  await p.evaluate(()=>gameAgent.step({frames:100,keys:[]}));

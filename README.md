@@ -19,6 +19,26 @@ npm start
 
 Open [the home page](http://localhost:4173/), [Football Legends](http://localhost:4173/football-legends), or [OvO](http://localhost:4173/ovo). Use **localhost**: Football Legends' existing host check permits it. The server binds only to `127.0.0.1`.
 
+## Demo flow
+
+Each game URL is a workspace with a game capture, an **Explore gameplay** action, and a list of existing findings. Findings open the original reproduction player:
+
+- [Goal camping enables long-range super shots](http://localhost:4173/football-legends/findings/goal-camping)
+- [Wall-jump shortcut bypasses level 9](http://localhost:4173/ovo/findings/left-wall-shortcut)
+- [Credits logo unlocks all 52 levels](http://localhost:4173/ovo/findings/credits-unlock) — opens the native credits screen with the manual reproduction instructions.
+
+**Explore** at `/football-legends/explore` and `/ovo/explore` runs ordinary play with two selectable profiles. Beginner reacts to nearby targets with broad movement and basic controls. Experienced anticipates the ball or the next platform, uses shorter corrections, and can combine movement with shooting or use a charged ability. These are explicit player models, with distinct prompts, perception lookahead and action timing; they do not alter scores, physics, bot difficulty or completion rules. Neither profile receives the finding policies or their supplied routes.
+
+Each run starts a fresh Football quick match or OvO level 1. Play continues through goals and forward level transitions for up to 120 half-second intervals (60 seconds of simulated time), or until stopped or the native match ends. Jev chooses movements from local action candidates; uncertain decisions receive a screenshot review by the configured visual model. A confidence threshold of 0.75 is a routing heuristic, not a calibrated probability of correct play. Countdown and goal-animation waits are local clock actions, explicitly marked `engineWait`, and excluded from the displayed model decision count.
+
+The live view shows the native score or level, game time and action feed. The last six sessions are retained in this browser when storage is available, with an export containing the profile prompt, native observations, decisions and outcome. Exploration exports and server records use `purpose: "explore"` and `guided: false`; finding reproductions retain their supplied-hypothesis labels. Profiles run one at a time in this demo; the UI does not claim concurrent swarm execution or automatic discovery.
+
+Use `npm run verify:explore` for offline policy checks and browser tests with mocked model replies. `npm run benchmark:explore:football` and `npm run benchmark:explore:ovo` run both profiles with **real provider calls** and save evidence under `evidence/explore-*`. Set `AGENT_DECISIONS`, `AGENT_PROFILE`, and `AGENT_TRIALS` to bound a calibration run. Scores and progression in these runs are observed outcomes, not enforced success rates.
+
+In the final Football calibration, equal **40-second game-time samples** ended at **1–2 for beginner** and **3–1 for experienced**, both at the native `botsSkill: 0.2`. They used 3 and 5 screenshot reviews, respectively, with 14.60 s and 16.13 s of total model-call time. These are one fresh sample per profile, not completed matches or a win-rate estimate; ball trajectories vary. Records are in ignored `evidence/explore-final-football/`.
+
+On OvO, both 40-second samples reached level 2. Beginner repeatedly missed its early gaps; experienced traversed those gaps, used a normal wall jump, and smashed the tutorial platform before missing a later jump. The experienced profile makes more progress but does not reliably finish the whole course. The recorded actions are in `evidence/explore-terrain-ovo/beginner-0.json` and `evidence/explore-complete-ovo/experienced-0.json`. No success or failure is injected into either game.
+
 In another terminal, run `npm run verify` to check both games and generate their home-page preview images. If Chrome is unavailable, run `npx playwright install chromium`. `BROWSER_EXECUTABLE` can select another Chromium binary; `PORT` defaults to 4173. Browser scripts currently target port 4173.
 
 Acquisition downloads the inspected public builds into **ignored `private/` storage**. The repository contains our harness, extraction patches and verification code; it does not distribute game bundles, game art, screenshots or recordings. The MIT license covers the original harness code. Original game ownership and attribution remain with MADPUFFERS and DEDRA GAMES.
@@ -84,7 +104,7 @@ Credentials stay on the local server. Game screenshots, game observations and re
 
 Football's prompt includes the net position and an earlier successful strategy. Quick-match AI difficulty is the game's default; this does not establish effectiveness against every bot difficulty or prove a measured fun/balance problem. The agent stops at a native goal or level completion. Unsuccessful experiments remain unconfirmed; the report separates evidence from the proposed balance or route issue.
 
-For the reliable credits demonstration, open OvO, click **Open credits**, double-click the central logo, then **Step 1 physics frame**. The page displays the game's own unlocked-level count. This action is a scripted/manual reproduction, not an LLM discovery.
+For the reliable credits demonstration, open the credits-unlock finding, double-click the central logo, then **Step 1 physics frame**. The page displays the game's own unlocked-level count. This action is a scripted/manual reproduction, not an LLM discovery.
 
 An older firsthand [OvO player guide](https://www.speedrun.com/ovo/guides/kd9vr) describes tapping both directions beside a wall as an infinite-wall-jump technique. That candidate did not reproduce directly. Inspection of the native wall-jump events revealed the facing-dependent input sequence used in the labelled rehearsal. No character, collision, score, charge or completion parameters are edited.
 

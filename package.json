@@ -11,7 +11,7 @@
     "extract:ovo": "node scripts/extract-ovo.mjs",
     "extract:all": "node scripts/extract.mjs && node scripts/extract-ovo.mjs",
     "start": "node server.mjs",
-    "verify": "node scripts/verify.mjs && node scripts/verify-ovo.mjs && node scripts/verify-credits.mjs && node scripts/verify-rehearsal.mjs && node scripts/verify-ovo-camera.mjs && node scripts/verify-hybrid.mjs && node scripts/verify-hybrid-ui.mjs",
+    "verify": "node scripts/verify.mjs && node scripts/verify-ovo.mjs && node scripts/verify-credits.mjs && node scripts/verify-rehearsal.mjs && node scripts/verify-ovo-camera.mjs && node scripts/verify-hybrid.mjs && node scripts/verify-hybrid-ui.mjs && node scripts/verify-explore.mjs && node scripts/verify-explore-ui.mjs",
     "verify:football": "node scripts/verify.mjs",
     "verify:ovo": "node scripts/verify-ovo.mjs",
     "verify:ovo:camera": "node scripts/verify-ovo-camera.mjs",
@@ -21,7 +21,10 @@
     "verify:rehearsal": "node scripts/verify-rehearsal.mjs",
     "verify:hybrid": "node scripts/verify-hybrid.mjs && node scripts/verify-hybrid-ui.mjs",
     "benchmark:hybrid:football": "AGENT_DECISIONS=90 node scripts/benchmark-hybrid.mjs football-legends",
-    "benchmark:hybrid:ovo": "node scripts/benchmark-hybrid.mjs ovo"
+    "benchmark:hybrid:ovo": "node scripts/benchmark-hybrid.mjs ovo",
+    "verify:explore": "node scripts/verify-explore.mjs && node scripts/verify-explore-ui.mjs",
+    "benchmark:explore:football": "node scripts/benchmark-explore.mjs football-legends",
+    "benchmark:explore:ovo": "node scripts/benchmark-explore.mjs ovo"
   },
   "devDependencies": {
     "playwright": "1.62.1"

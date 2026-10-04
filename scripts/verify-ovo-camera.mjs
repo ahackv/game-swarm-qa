@@ -74,7 +74,7 @@ try {
     if(/^\/api\/(?:agent|hybrid|tactical)\/decision$/.test(url.pathname))modelRequests.push(request.url());
   });
   page.on('response',response=>{if(response.status()>=400)failed.push({url:response.url(),status:response.status()});});
-  await page.goto('http://localhost:4173/ovo');
+  await page.goto('http://localhost:4173/ovo/findings/left-wall-shortcut');
   await page.waitForFunction(()=>window.gameAgent?.observe().ready&&window.swarm&&document.querySelector('#agent-rehearse')?.disabled===false,{},{timeout:15000});
   await page.evaluate(()=>swarm.start({mode:'scripted',playbackFps:20,limit:30}));
   assert.equal(await page.evaluate(()=>swarm.running),false);

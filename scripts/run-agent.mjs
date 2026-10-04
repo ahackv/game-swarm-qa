@@ -21,7 +21,7 @@ const b=await browser();
 const history=[];let scored=false,interrupted=false;
 try{
  const page=await b.newPage({viewport:{width:1280,height:1040}});
- await page.goto('http://localhost:4173/'+game);
+ await page.goto('http://localhost:4173/'+game+'/findings/'+(game==='ovo'?'left-wall-shortcut':'goal-camping'));
  await page.waitForFunction(()=>window.gameAgent?.observe().ready,{},{timeout:15000});
  if(game==='football-legends')await page.evaluate(()=>gameAgent.startQuickMatch({fireball:true}));
  else await page.evaluate(()=>gameAgent.startLevel(9));

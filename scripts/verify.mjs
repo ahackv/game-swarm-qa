@@ -12,7 +12,7 @@ try {
   page.on('request',req=>{if(!new URL(req.url()).hostname.match(/^(localhost|127\.0\.0\.1)$/))external.push(req.url());});
   page.on('pageerror',error=>errors.push(error.message));
   page.on('response',response=>{if(response.status()>=400&&!response.url().endsWith('favicon.ico'))failed.push({url:response.url(),status:response.status()});});
-  await page.goto('http://localhost:4173/football-legends');
+  await page.goto('http://localhost:4173/football-legends/findings/goal-camping');
   await page.waitForFunction(()=>window.football?.observe().ready,{},{timeout:15000});
   await page.evaluate(()=>football.startQuickMatch({fireball:true}));
   // Start at the first playable frame, rather than an arbitrary point that can

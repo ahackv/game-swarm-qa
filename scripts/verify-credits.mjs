@@ -7,7 +7,7 @@ try {
   const errors=[],external=[];
   page.on('pageerror',error=>errors.push(error.message));
   page.on('request',request=>{if(!/^(localhost|127\.0\.0\.1)$/.test(new URL(request.url()).hostname))external.push(request.url());});
-  await page.goto('http://localhost:4173/ovo');
+  await page.goto('http://localhost:4173/ovo/findings/left-wall-shortcut');
   await page.waitForFunction(()=>window.gameAgent?.observe().ready,{},{timeout:15000});
   const before=await page.evaluate(()=>gameAgent.observe().unlockedLevels);
   assert.equal(before,1);

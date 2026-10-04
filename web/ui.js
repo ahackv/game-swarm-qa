@@ -1,5 +1,5 @@
 const iframe = document.querySelector('#game');
-const isOvo = location.pathname === '/ovo';
+const isOvo = location.pathname.split('/')[1] === 'ovo';
 const config = isOvo ? {slug:'ovo',title:'OvO',fps:60,author:'DEDRA GAMES'} : {slug:'football-legends',title:'Football Legends',fps:40,author:'MADPUFFERS'};
 const frameMs = 1000 / config.fps;
 document.title = config.title + ' · Swarm QA';
@@ -41,7 +41,7 @@ function observe() {
 function observeOvo(clock, game) {
   const collider = game.types_by_index.find(type => type.sid === 980093774729797);
   const players = (collider?.instances || []).map(instance => ({id:instance.uid,x:instance.x,y:instance.y,width:instance.width,height:instance.height,facing:instance.instance_vars?.[2],behaviors:instance.behavior_insts.map(scalarFields)}));
-  const objects = game.types_by_index.filter(type => !type.is_family).flatMap(type => type.instances.filter(instance => Number.isFinite(instance.x) && Number.isFinite(instance.y)).map(instance => ({id:instance.uid,type:type.name,x:instance.x,y:instance.y,width:instance.width,height:instance.height,angle:instance.angle,visible:instance.visible,...(typeof instance.text === 'string' ? {text:instance.text} : {})})));
+  const objects = game.types_by_index.filter(type => !type.is_family).flatMap(type => type.instances.filter(instance => Number.isFinite(instance.x) && Number.isFinite(instance.y)).map(instance => {instance.update_bbox?.();return {id:instance.uid,type:type.name,x:instance.x,y:instance.y,width:instance.width,height:instance.height,angle:instance.angle,visible:instance.visible,bounds:instance.bbox?{left:instance.bbox.left,right:instance.bbox.right,top:instance.bbox.top,bottom:instance.bbox.bottom}:undefined,...(typeof instance.text === 'string' ? {text:instance.text} : {})};}));
   const variables = Object.fromEntries(game.all_global_vars.map(variable => [variable.name, variable.getValue()]));
   const layout = game.running_layout;
   const progression = game.types_by_index.find(type=>type.name==='t12')?.instances[0]?.data;
@@ -144,7 +144,18 @@ async function openCredits() {
   stopPreview();runtime().win.c2_callFunction('Menu > Credits',[]);
   return step({frames:120,keys:[]});
 }
-const api = {observe,capture,act,step:agentStep,stop:stopPreview,releaseKeys:()=>applyKeys([]),...(isOvo ? {startLevel,openCredits} : {startQuickMatch:quickMatch})};
+async function reset({signal}={}) {
+  signal?.throwIfAborted();stopPreview();applyKeys([]);ready=false;buttons.forEach(button=>button.disabled=true);
+  await new Promise((resolve,reject)=>{
+    const cleanup=()=>{iframe.removeEventListener('load',loaded);signal?.removeEventListener('abort',aborted);};
+    const loaded=()=>{cleanup();resolve();},aborted=()=>{cleanup();reject(signal.reason);};
+    iframe.addEventListener('load',loaded,{once:true});signal?.addEventListener('abort',aborted,{once:true});
+    iframe.src='/game/'+config.slug+'/index.html?run='+Date.now();
+  });
+  await initialize(signal);
+  return observe();
+}
+const api = {observe,capture,act,reset,step:agentStep,stop:stopPreview,releaseKeys:()=>applyKeys([]),...(isOvo ? {startLevel,openCredits} : {startQuickMatch:quickMatch})};
 window.gameAgent = api;
 window[isOvo ? 'ovo' : 'football'] = api;
 document.querySelector('#observe-step').onclick=()=>agentStep({frames:config.fps/2}).catch(showError);
@@ -162,18 +173,23 @@ function showError(error) {document.querySelector('#status-text').textContent=er
 
 // Bootstrap/loading uses the browser's real clock. Arm the barrier after the
 // main menu and its first entrance animation, before starting any match.
+async function initialize(signal) {
 while(!ready) {
+  signal?.throwIfAborted();
   try {
     const {win,game,require,clock}=runtime();
     const loaded = isOvo ? game?.running_layout?.name === 'Main Menu' && !game.isloading && win.WebSdkWrapper : game?.state?.current==='menu' && require(19).default.isArtReady && require(3).default.fontReady && game.state.getCurrentState().menuSideBar?.visible;
     if(loaded) {
       await sleep(450);
+      signal?.throwIfAborted();
       clock.pause(isOvo ? {performanceMs:game.last_tick_time} : {});
       if(isOvo) {game.isSuspended=false;win.Howler?.mute(true);}
       ready=true;buttons.forEach(b=>b.disabled=false);refresh();
       win.addEventListener('blur',()=>applyKeys([]));
       break;
     }
-  } catch(error) {console.debug(error.message);}
+  } catch(error) {if(signal?.aborted)throw signal.reason;console.debug(error.message);}
   await sleep(50);
 }
+}
+await initialize();

@@ -47,7 +47,7 @@ try {
    }else throw Error('Unexpected additional hybrid request.');
   }catch(error){routeErrors.push(error.message);resolvePending();await route.fulfill({status:500,json:{error:error.message}});}
  });
- await page.goto('http://localhost:4173/ovo');
+ await page.goto('http://localhost:4173/ovo/findings/left-wall-shortcut');
  await page.waitForFunction(()=>window.gameAgent?.observe().ready&&window.swarm&&!document.querySelector('#agent-run').disabled,{},{timeout:15000});
  assert.equal(await page.locator('#agent-mode').inputValue(),'tactical');
  await page.locator('#agent-mode').selectOption('live');
@@ -134,7 +134,7 @@ try {
    }catch(error){faults.push(error.message);await route.fulfill({status:500,json:{error:error.message}});}
   });
   try {
-   await tacticalPage.goto('http://localhost:4173/ovo');
+   await tacticalPage.goto('http://localhost:4173/ovo/findings/left-wall-shortcut');
    await tacticalPage.waitForFunction(()=>window.gameAgent?.observe().ready&&window.swarm&&!document.querySelector('#agent-run').disabled,{},{timeout:15000});
    assert.equal(await tacticalPage.locator('#agent-mode').inputValue(),'tactical');
    assert.equal(await tacticalPage.locator('#agent-run').textContent(),'Run Jev + Luna agent →');
@@ -174,7 +174,7 @@ try {
  for(const escalateFirst of [false,true])tacticalCases.push(await verifyTacticalCase(escalateFirst));
  const fallback=await b.newPage();
  await fallback.route('**/api/agent/config?*',route=>route.fulfill({json:{...config,hybrid:{...config.hybrid,strategies:['routed']}}}));
- await fallback.goto('http://localhost:4173/ovo');await fallback.waitForFunction(()=>window.gameAgent?.observe().ready&&!document.querySelector('#agent-run').disabled,{},{timeout:15000});
+ await fallback.goto('http://localhost:4173/ovo/findings/left-wall-shortcut');await fallback.waitForFunction(()=>window.gameAgent?.observe().ready&&!document.querySelector('#agent-run').disabled,{},{timeout:15000});
  assert.equal(await fallback.locator('#agent-mode').inputValue(),'live');assert.equal(await fallback.locator('#agent-mode option[value=tactical]').isDisabled(),true);
  await fallback.close();
  async function verifySetupCancellation(game) {
@@ -184,7 +184,7 @@ try {
   await setupPage.route('**/api/agent/config?*',route=>route.fulfill({json:config}));
   for(const endpoint of ['agent','hybrid'])await setupPage.route('**/api/'+endpoint+'/decision',async route=>{modelCalls.push(route.request().url());await route.fulfill({status:500,json:{error:'No model decision is allowed during cancelled setup verification.'}});});
   try {
-   await setupPage.goto('http://localhost:4173/'+game);
+   await setupPage.goto('http://localhost:4173/'+game+'/findings/'+(game==='ovo'?'left-wall-shortcut':'goal-camping'));
    await setupPage.waitForFunction(()=>window.gameAgent?.observe().ready&&window.swarm&&!document.querySelector('#agent-run').disabled,{},{timeout:15000});
    const before=await setupPage.evaluate(()=>gameAgent.observe());
    const rejected=await setupPage.evaluate(async game=>{

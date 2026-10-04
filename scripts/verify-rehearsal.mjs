@@ -39,7 +39,7 @@ try {
     if(url.pathname==='/api/agent/decision')modelRequests.push(request.url());
   });
   page.on('response',response=>{if(response.status()>=400)failed.push({url:response.url(),status:response.status()});});
-  await page.goto('http://localhost:4173/ovo');
+  await page.goto('http://localhost:4173/ovo/findings/left-wall-shortcut');
   await page.waitForFunction(()=>window.gameAgent?.observe().ready&&window.swarm&&document.querySelector('#agent-rehearse')?.disabled===false,{},{timeout:15000});
   await page.evaluate(()=>window.swarm.start({mode:'scripted',playbackFps:20,limit:30}));
   const result=await page.evaluate(()=>({running:swarm.running,history:swarm.history,final:gameAgent.observe(),status:document.querySelector('#agent-status').textContent}));
